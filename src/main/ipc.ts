@@ -6,11 +6,13 @@ import { LOCATIONS } from '@domain/constants'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
+import { getExplored, loadExplored, resetExplored, trackExplored } from './explored'
+import { toggleHud } from './hud'
 import { loadJournal, recordJournalVisit, saveJournal } from './journal'
-import { SaveFileSource } from './saveFileSource'
+import { HybridSource } from './hybridSource'
 import { loadSettings, saveSettings } from './store'
 
-let source: SaveFileSource | null = null
+let source: HybridSource | null = null
 let gameDir: string | null = null
 
 const send = (channel: string, payload: unknown): void => {
@@ -20,6 +22,7 @@ const send = (channel: string, payload: unknown): void => {
 // settlement visits are recorded here so they count even when the Dialogue view is closed
 const onState = (state: GameState): void => {
   send(IPC.stateChanged, state)
+  trackExplored(state.party)
   const loc = state.party?.location
   if (loc === undefined || loc < 1 || loc > 16) return
   recordJournalVisit(loc).then((j) => j && send(IPC.journalChanged, j), () => undefined)
@@ -28,7 +31,7 @@ const onState = (state: GameState): void => {
 async function startSource(): Promise<void> {
   await source?.stop()
   gameDir = await locateGameDir(loadSettings().gameDir)
-  source = new SaveFileSource(gameDir)
+  source = new HybridSource(gameDir, loadSettings().liveMemory !== false)
   source.start(onState)
 }
 
@@ -44,8 +47,16 @@ export async function setupIpc(): Promise<void> {
   ipcMain.handle(IPC.getSettings, (): SettingsInfo => ({
     gameDir,
     savePath: pickSavePath(gameDir, existsSync),
-    override: loadSettings().gameDir ?? null
+    override: loadSettings().gameDir ?? null,
+    liveMemory: loadSettings().liveMemory !== false,
+    attachedPid: source?.attachment()?.pid ?? null
   }))
+
+  ipcMain.handle(IPC.setLiveMemory, async (_e, on: unknown): Promise<GameState | null> => {
+    saveSettings({ liveMemory: on === true })
+    await startSource()
+    return source?.getState() ?? null
+  })
 
   ipcMain.handle(IPC.chooseDir, async (e): Promise<GameState | null> => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -86,8 +97,13 @@ export async function setupIpc(): Promise<void> {
     }
   })
 
+  ipcMain.handle(IPC.exploredGet, (): Uint8Array => getExplored())
+  ipcMain.handle(IPC.exploredReset, (): Uint8Array => resetExplored())
+  ipcMain.handle(IPC.hudToggle, (): boolean => toggleHud())
+
   ipcMain.handle(IPC.journalGet, () => loadJournal())
   ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
 
+  await loadExplored((bits) => send(IPC.exploredChanged, bits))
   await startSource()
 }

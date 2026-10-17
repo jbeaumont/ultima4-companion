@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LOCATIONS } from '@domain/constants'
 import { cellStyle, isRoomCell, roomIndex } from '@domain/dungeonGlyphs'
+import { FOG_SIZE, exploredPercent, isExplored } from '@domain/fog'
 import { MOONGATES, gateState } from '@domain/moongates'
 import { tileName } from '@domain/tiles'
 import { DUNGEON_LEVELS, DUNGEON_SIZE, ROOM_SIZE, decodeDungeonCell, parseDng } from '@parsers/dungeon'
@@ -16,9 +17,26 @@ import { MapCanvas } from '../canvas/MapCanvas'
 import type { DrawArgs } from '../canvas/MapCanvas'
 import { buildAtlas, drawGrid, drawTile } from '../canvas/tiles'
 import type { TileAtlas } from '../canvas/tiles'
-import { tilePx, tileToScreen } from '../canvas/viewport'
+import { tilePx, tileToScreen, visibleRange } from '../canvas/viewport'
+import { useExplored } from '../useExplored'
 
 const AVATAR_TILE = 31
+const FOG_KEY = 'u4.fog'
+
+const readFogPref = (): boolean => {
+  try {
+    return localStorage.getItem(FOG_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+const writeFogPref = (on: boolean): void => {
+  try {
+    localStorage.setItem(FOG_KEY, on ? '1' : '0')
+  } catch {
+    // storage unavailable: the choice just won't be remembered
+  }
+}
 
 interface Base {
   atlas: TileAtlas
@@ -51,6 +69,28 @@ function drawParty(a: DrawArgs, atlas: TileAtlas, tx: number, ty: number): void 
   ctx.lineWidth = 2.5
   ctx.strokeStyle = `rgba(255,225,70,${0.6 + 0.4 * pulse})`
   ctx.stroke()
+}
+
+/** Black out unexplored tiles, merging horizontal runs into one rect per row. */
+function drawFog(a: DrawArgs, bits: Uint8Array): void {
+  const { ctx, vp } = a
+  const r = visibleRange(vp, FOG_SIZE, FOG_SIZE, a.w, a.h)
+  const t = tilePx(vp.zoom)
+  ctx.fillStyle = 'rgba(2,2,6,0.97)'
+  for (let y = r.y0; y < r.y1; y++) {
+    const sy = Math.floor(vp.offY + y * t)
+    const h = Math.floor(vp.offY + (y + 1) * t) - sy
+    let run = -1
+    for (let x = r.x0; x <= r.x1; x++) {
+      const dark = x < r.x1 && !isExplored(bits, x, y)
+      if (dark && run < 0) run = x
+      else if (!dark && run >= 0) {
+        const sx = Math.floor(vp.offX + run * t)
+        ctx.fillRect(sx, sy, Math.floor(vp.offX + x * t) - sx, h)
+        run = -1
+      }
+    }
+  }
 }
 
 /** Ring per Moongate; the open one (Trammel phase) is highlighted and labelled with where it leads (Felucca phase). */
@@ -87,11 +127,13 @@ function drawGates(a: DrawArgs, party: PartySave | null): void {
   }
 }
 
-function WorldMap({ base, party, center, gates }: { base: Base; party: PartySave | null; center: number; gates: boolean }) {
+function WorldMap(props: { base: Base; party: PartySave | null; center: number; gates: boolean; fog: Uint8Array | null }) {
+  const { base, party, center, gates, fog } = props
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
   const here = party && party.location === 0 ? party : null
   const draw = (a: DrawArgs): void => {
     drawGrid(a.ctx, base.atlas, a.vp, WORLD_SIZE, WORLD_SIZE, a.w, a.h, (x, y) => base.world[y * WORLD_SIZE + x]!)
+    if (fog) drawFog(a, fog)
     if (gates) drawGates(a, party)
     if (here) drawParty(a, base.atlas, here.x, here.y)
   }
@@ -200,7 +242,7 @@ function DungeonMap(props: { base: Base; id: number; dungeon: Dungeon; level: nu
               const y = Math.floor(i / DUNGEON_SIZE)
               const cell = decodeDungeonCell(cells[i]!)
               const st = cellStyle(cell)
-              const isParty = !!here && here.dungeonLevel === level && here.dungeonX === x && here.dungeonY === y
+              const isParty = !!here && here.dungeonLevel === level && here.x === x && here.y === y
               const clickable = isRoomCell(cell)
               const roomNo = clickable ? roomIndex(cell, level, id) : -1
               return (
@@ -232,6 +274,9 @@ export function MapView({ state }: { state: GameState | null }) {
   const [sel, setSel] = useState(0)
   const [follow, setFollow] = useState(true)
   const [gates, setGates] = useState(true)
+  const [fogOn, setFogOn] = useState(readFogPref)
+  const [explored, setExplored] = useExplored()
+  const percent = useMemo(() => (explored ? exploredPercent(explored) : 0), [explored])
   const [floor, setFloor] = useState(0)
   const [level, setLevel] = useState(0)
   const [centerSeq, setCenterSeq] = useState(0)
@@ -317,6 +362,10 @@ export function MapView({ state }: { state: GameState | null }) {
     setSel(id)
     setFloor(0)
   }
+  const resetFog = (): void => {
+    if (!window.confirm('Reset the fog of war? All explored tiles will be forgotten.')) return
+    window.u4.resetExplored().then(setExplored, () => undefined)
+  }
   const kind = sel === 0 ? 'world' : LOCATIONS[sel]?.kind
   const inShrine = loc !== undefined && LOCATIONS[loc]?.kind === 'shrine'
 
@@ -328,7 +377,7 @@ export function MapView({ state }: { state: GameState | null }) {
   else if (place.status === 'fail') body = <p className="muted">Could not load the files for this location.</p>
   else {
     const p = place.value
-    if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} />
+    if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} fog={fogOn ? explored : null} />
     else if (p.kind === 'settlement') {
       body = <SettlementMap base={base.value} id={sel} floors={p.floors} convs={p.convs} floor={floor} party={party} center={centerSeq} />
     } else body = <DungeonMap base={base.value} id={sel} dungeon={p.dungeon} level={level} onLevel={(l) => { setFollow(false); setLevel(l) }} party={party} />
@@ -353,6 +402,18 @@ export function MapView({ state }: { state: GameState | null }) {
           <label className="check">
             <input type="checkbox" checked={gates} onChange={(e) => setGates(e.target.checked)} /> Moongates
           </label>
+        )}
+        {kind === 'world' && (
+          <>
+            <label className="check">
+              <input
+                type="checkbox" checked={fogOn}
+                onChange={(e) => { setFogOn(e.target.checked); writeFogPref(e.target.checked) }}
+              /> Fog of war
+            </label>
+            <span className="muted small">{percent.toFixed(1)}% explored</span>
+            <button className="btn small" onClick={resetFog}>Reset fog</button>
+          </>
         )}
         {kind !== 'dungeon' && party && <button className="btn small" onClick={recenter}>Center on party</button>}
         {kind === 'castle' && place.status === 'ok' && place.value.kind === 'settlement' && place.value.floors.length > 1 && (

@@ -8,13 +8,31 @@ interface Props {
 
 export function Settings({ state, onState }: Props) {
   const [info, setInfo] = useState<SettingsInfo | null>(null)
+  const [busy, setBusy] = useState(false)
   useEffect(() => {
     window.u4.getSettings().then(setInfo)
   }, [state?.gameDir, state?.savePath])
 
+  // attachment changes as DOSBox starts and stops, so poll while the view is open
+  useEffect(() => {
+    const t = setInterval(() => window.u4.getSettings().then(setInfo, () => undefined), 2000)
+    return () => clearInterval(t)
+  }, [])
+
   const choose = async () => {
     const s = await window.u4.chooseGameDir()
     if (s) onState(s)
+  }
+
+  const toggleLive = async (on: boolean) => {
+    setBusy(true)
+    try {
+      const s = await window.u4.setLiveMemory(on)
+      if (s) onState(s)
+      setInfo(await window.u4.getSettings())
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -31,6 +49,24 @@ export function Settings({ state, onState }: Props) {
         </dl>
         <button className="btn" onClick={choose}>Choose folder…</button>
         <p className="muted small">Read-only: the companion never writes to the game folder.</p>
+      </section>
+      <section className="panel settings">
+        <h3>Live memory mode</h3>
+        <label className="check">
+          <input
+            type="checkbox" checked={info?.liveMemory ?? false} disabled={!info || busy}
+            onChange={(e) => toggleLive(e.target.checked)}
+          /> Read the game live from DOSBox
+        </label>
+        <p className="muted small">
+          Reads DOSBox's memory read-only, so the Tracker and maps update as you play instead of on save.
+          It only works while the game is running; otherwise the companion falls back to the save file.
+        </p>
+        {info?.liveMemory && (
+          <p className={info.attachedPid !== null ? 'ok' : 'muted'}>
+            {info.attachedPid !== null ? `Attached to DOSBox (PID ${info.attachedPid})` : 'Not attached'}
+          </p>
+        )}
       </section>
     </>
   )

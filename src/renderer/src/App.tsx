@@ -23,6 +23,7 @@ export function App() {
             {v}
           </button>
         ))}
+        <button className="hud-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
       </nav>
       <main className="content">
         {view === 'Tracker' ? (
