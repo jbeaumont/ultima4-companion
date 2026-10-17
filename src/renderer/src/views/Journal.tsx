@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { PartySave } from '@parsers/party'
 import { cooldowns } from '@domain/cooldowns'
 import { MOONGATES, PHASE_NAMES, SPIRITUALITY_RUNE, gateState, stepsUntilRoute, upcomingGates } from '@domain/moongates'
 import { progress } from '@domain/progress'
 import type { ChecklistItem } from '@domain/progress'
-import { emptyJournal } from '@shared/journal'
 import type { Clue, Journal } from '@shared/journal'
 import { newClueId, routeLabel, timerLabel } from '@shared/format'
 import type { GameState } from '@shared/types'
 import { VirtueRow } from '../components/VirtueRow'
+import { useJournal } from '../useJournal'
 
 const GROUPS: { id: ChecklistItem['group']; title: string }[] = [
   { id: 'virtues', title: 'Partial Avatarhood' },
@@ -150,46 +150,6 @@ function Moongates({ p }: { p: PartySave }) {
       </div>
     </Section>
   )
-}
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-
-function useJournal() {
-  const [journal, setJournal] = useState<Journal | null>(null)
-  const [save, setSave] = useState<SaveState>('idle')
-  const latest = useRef<Journal>(emptyJournal())
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const flush = (): void => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = null
-    setSave('saving')
-    window.u4.saveJournal(latest.current).then(() => setSave('saved'), () => setSave('error'))
-  }
-  const update = (next: Journal, delay: number): void => {
-    latest.current = next
-    setJournal(next)
-    setSave('saving')
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(flush, delay)
-  }
-
-  useEffect(() => {
-    let live = true
-    window.u4.getJournal().then((j) => {
-      if (!live) return
-      latest.current = j
-      setJournal(j)
-    }, () => live && setJournal(emptyJournal()))
-    return () => {
-      live = false
-      if (timer.current) {
-        clearTimeout(timer.current)
-        void window.u4.saveJournal(latest.current) // unsent edit
-      }
-    }
-  }, [])
-  return { journal, save, update }
 }
 
 function Notes({ journal, save, update }: ReturnType<typeof useJournal> & { journal: Journal }) {

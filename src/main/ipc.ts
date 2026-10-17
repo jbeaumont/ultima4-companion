@@ -6,22 +6,30 @@ import { LOCATIONS } from '@domain/constants'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
-import { loadJournal, saveJournal } from './journal'
+import { loadJournal, recordJournalVisit, saveJournal } from './journal'
 import { SaveFileSource } from './saveFileSource'
 import { loadSettings, saveSettings } from './store'
 
 let source: SaveFileSource | null = null
 let gameDir: string | null = null
 
-const broadcast = (state: GameState): void => {
-  for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.stateChanged, state)
+const send = (channel: string, payload: unknown): void => {
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload)
+}
+
+// settlement visits are recorded here so they count even when the Dialogue view is closed
+const onState = (state: GameState): void => {
+  send(IPC.stateChanged, state)
+  const loc = state.party?.location
+  if (loc === undefined || loc < 1 || loc > 16) return
+  recordJournalVisit(loc).then((j) => j && send(IPC.journalChanged, j), () => undefined)
 }
 
 async function startSource(): Promise<void> {
   await source?.stop()
   gameDir = await locateGameDir(loadSettings().gameDir)
   source = new SaveFileSource(gameDir)
-  source.start(broadcast)
+  source.start(onState)
 }
 
 const readAll = async (dir: string, files: Record<string, string>): Promise<Record<string, Uint8Array>> => {

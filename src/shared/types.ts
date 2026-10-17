@@ -35,7 +35,8 @@ export const IPC = {
   assetsBase: 'assets:base',
   assetsLocation: 'assets:location',
   journalGet: 'journal:get',
-  journalSave: 'journal:save'
+  journalSave: 'journal:save',
+  journalChanged: 'journal:changed'
 } as const
 
 /** Raw bytes of the shared map assets; the renderer parses them. */

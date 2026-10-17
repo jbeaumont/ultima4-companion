@@ -15,7 +15,7 @@ The app expects the GOG install at `C:\Program Files\GOG Galaxy\Games\Ultima 4`.
 3. ✅ Save-file watcher → live Tracker
 4. ✅ Map: world, towns, dungeons
 5. ✅ Journal, progress, cooldowns, moongates
-6. Hints, dialogue explorer, clue capture
+6. ✅ Hints, dialogue explorer, clue capture
 7. Live DOSBox memory mode, fog-of-war, compact HUD
 8. Save snapshots → editor/cheats
 9. Art gallery, dungeon tools, installer

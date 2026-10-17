@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useGameState } from './useGameState'
+import { Dialogue } from './views/Dialogue'
+import { Hints } from './views/Hints'
 import { JournalView } from './views/Journal'
 import { MapView } from './views/Map'
 import { Settings } from './views/Settings'
@@ -29,6 +31,10 @@ export function App() {
           <MapView state={state} />
         ) : view === 'Journal' ? (
           <JournalView state={state} />
+        ) : view === 'Hints' ? (
+          <Hints state={state} />
+        ) : view === 'Dialogue' ? (
+          <Dialogue state={state} />
         ) : view === 'Settings' ? (
           <Settings state={state} onState={setState} />
         ) : (

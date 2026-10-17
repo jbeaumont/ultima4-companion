@@ -101,3 +101,30 @@ h4 { margin: 12px 0 6px; font-size: 12px; color: var(--muted); text-transform: u
 .clue-form input { flex: 1 1 140px; }
 .clues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .clues li { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; font-size: 13px; background: #1b1b30; border-radius: 6px; padding: 8px 10px; }
+.hint, .npc { text-align: left; font: inherit; color: inherit; }
+.tier { font-size: 13px; line-height: 1.4; }
+.tier-label { color: var(--accent); font-size: 11px; text-transform: uppercase; margin-right: 4px; }
+.hint-actions { display: flex; gap: 8px; }
+.hint-filters { margin: 16px 0; }
+.panel + .panel, .toolbar + .panel, .panel + .toolbar { margin-top: 16px; }
+.note { color: #e0a050; font-size: 13px; }
+.dialogue { display: grid; grid-template-columns: 220px 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+.towns { display: flex; flex-direction: column; gap: 2px; }
+.town { background: none; border: 0; color: var(--text); text-align: left; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; flex-direction: column; }
+.town:hover:not(:disabled) { background: #1f1f36; }
+.town.active { background: #2a2540; color: var(--accent); }
+.town:disabled { opacity: .55; cursor: default; }
+.here { color: #5fbf7a; font-size: 11px; }
+.dialogue-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.npc { border: 1px solid transparent; cursor: pointer; }
+.npc.selected { border-color: var(--accent); }
+.lead { color: var(--accent); font-size: 11px; border: 1px solid var(--accent); border-radius: 10px; padding: 0 6px; white-space: nowrap; }
+.search { flex: 1; min-width: 240px; background: var(--panel); color: var(--text); border: 1px solid var(--muted); border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+.results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 14px; padding: 0; text-align: left; }
+.chat { background: #0b0b14; border-radius: 8px; padding: 10px; max-height: 280px; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.chat-line { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 14px; }
+.chat-line.you { color: var(--muted); }
+.chat-form { display: flex; gap: 8px; }
+.chat-form input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--muted); border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+.clue-btn { flex: none; }

@@ -24,5 +24,6 @@ export const SECRET_SPOTS = {
   wheel: { x: 96, y: 215 },
   skull: { x: 197, y: 245 },
   blackStone: { x: 224, y: 133 },
-  whiteStone: { x: 64, y: 80 }
+  whiteStone: { x: 64, y: 80 },
+  balloon: { x: 233, y: 242 }
 } as const

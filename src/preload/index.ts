@@ -17,7 +17,13 @@ const api = {
   getBaseAssets: (): Promise<BaseAssets | null> => ipcRenderer.invoke(IPC.assetsBase),
   getLocationAssets: (id: number): Promise<LocationAssets | null> => ipcRenderer.invoke(IPC.assetsLocation, id),
   getJournal: (): Promise<Journal> => ipcRenderer.invoke(IPC.journalGet),
-  saveJournal: (j: Journal): Promise<Journal> => ipcRenderer.invoke(IPC.journalSave, j)
+  saveJournal: (j: Journal): Promise<Journal> => ipcRenderer.invoke(IPC.journalSave, j),
+  /** Main pushes the journal when it records a visit. */
+  onJournal: (cb: (j: Journal) => void): (() => void) => {
+    const handler = (_e: unknown, j: Journal) => cb(j)
+    ipcRenderer.on(IPC.journalChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.journalChanged, handler)
+  }
 }
 
 export type U4Api = typeof api
