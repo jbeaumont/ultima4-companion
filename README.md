@@ -13,7 +13,7 @@ The app expects the GOG install at `C:\Program Files\GOG Galaxy\Games\Ultima 4`.
 1. ✅ Scaffold (Electron + Vite + React + TS, Vitest)
 2. ✅ Parsers for PARTY.SAV, MONSTERS.SAV, DNGMAP.SAV, WORLD.MAP, SHAPES.EGA, .ULT, .TLK, .DNG, .CON, plus `npm run extract`
 3. ✅ Save-file watcher → live Tracker
-4. Map: world, towns, dungeons
+4. ✅ Map: world, towns, dungeons
 5. Journal, progress, cooldowns, moongates
 6. Hints, dialogue explorer, clue capture
 7. Live DOSBox memory mode, fog-of-war, compact HUD

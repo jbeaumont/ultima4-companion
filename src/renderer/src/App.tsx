@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGameState } from './useGameState'
+import { MapView } from './views/Map'
 import { Settings } from './views/Settings'
 import { Tracker } from './views/Tracker'
 
@@ -23,6 +24,8 @@ export function App() {
       <main className="content">
         {view === 'Tracker' ? (
           <Tracker state={state} />
+        ) : view === 'Map' ? (
+          <MapView state={state} />
         ) : view === 'Settings' ? (
           <Settings state={state} onState={setState} />
         ) : (

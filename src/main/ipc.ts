@@ -1,7 +1,10 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { LOCATIONS } from '@domain/constants'
 import { IPC } from '@shared/types'
-import type { GameState, SettingsInfo } from '@shared/types'
+import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
 import { SaveFileSource } from './saveFileSource'
 import { loadSettings, saveSettings } from './store'
@@ -18,6 +21,12 @@ async function startSource(): Promise<void> {
   gameDir = await locateGameDir(loadSettings().gameDir)
   source = new SaveFileSource(gameDir)
   source.start(broadcast)
+}
+
+const readAll = async (dir: string, files: Record<string, string>): Promise<Record<string, Uint8Array>> => {
+  const out: Record<string, Uint8Array> = {}
+  for (const [role, name] of Object.entries(files)) out[role] = new Uint8Array(await readFile(join(dir, name)))
+  return out
 }
 
 export async function setupIpc(): Promise<void> {
@@ -42,6 +51,30 @@ export async function setupIpc(): Promise<void> {
     saveSettings({ gameDir: dir })
     await startSource()
     return source?.getState() ?? null
+  })
+
+  // read-only; file names come from LOCATIONS, never from the renderer
+  ipcMain.handle(IPC.assetsBase, async (): Promise<BaseAssets | null> => {
+    if (!gameDir) return null
+    try {
+      const f = await readAll(gameDir, { shapes: 'SHAPES.EGA', world: 'WORLD.MAP' })
+      return { shapes: f.shapes!, world: f.world! }
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle(IPC.assetsLocation, async (_e, id: unknown): Promise<LocationAssets | null> => {
+    const loc = typeof id === 'number' ? LOCATIONS[id] : undefined
+    if (!gameDir || !loc || !loc.file || loc.kind === 'shrine') return null
+    const names: Record<string, string> = loc.kind === 'dungeon' ? { dng: loc.file } : { ult: loc.file }
+    if (loc.upperFloor) names.ult2 = loc.upperFloor
+    if (loc.talk) names.tlk = loc.talk
+    try {
+      return { kind: loc.kind, files: await readAll(gameDir, names) }
+    } catch {
+      return null
+    }
   })
 
   await startSource()

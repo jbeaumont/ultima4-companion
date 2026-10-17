@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/types'
-import type { GameState, SettingsInfo } from '@shared/types'
+import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 
 // Typed bridge to the main process; the renderer has no other access.
 const api = {
@@ -12,7 +12,9 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.stateChanged, handler)
   },
   getSettings: (): Promise<SettingsInfo> => ipcRenderer.invoke(IPC.getSettings),
-  chooseGameDir: (): Promise<GameState | null> => ipcRenderer.invoke(IPC.chooseDir)
+  chooseGameDir: (): Promise<GameState | null> => ipcRenderer.invoke(IPC.chooseDir),
+  getBaseAssets: (): Promise<BaseAssets | null> => ipcRenderer.invoke(IPC.assetsBase),
+  getLocationAssets: (id: number): Promise<LocationAssets | null> => ipcRenderer.invoke(IPC.assetsLocation, id)
 }
 
 export type U4Api = typeof api

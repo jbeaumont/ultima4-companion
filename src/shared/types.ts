@@ -31,5 +31,19 @@ export const IPC = {
   getState: 'state:get',
   stateChanged: 'state:changed',
   getSettings: 'settings:get',
-  chooseDir: 'game:chooseDir'
+  chooseDir: 'game:chooseDir',
+  assetsBase: 'assets:base',
+  assetsLocation: 'assets:location'
 } as const
+
+/** Raw bytes of the shared map assets; the renderer parses them. */
+export interface BaseAssets {
+  shapes: Uint8Array
+  world: Uint8Array
+}
+
+/** Raw files for one location, keyed by role: ult, ult2, tlk or dng. */
+export interface LocationAssets {
+  kind: 'castle' | 'town' | 'dungeon'
+  files: Record<string, Uint8Array>
+}
