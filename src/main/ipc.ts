@@ -6,6 +6,7 @@ import { LOCATIONS } from '@domain/constants'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
+import { loadJournal, saveJournal } from './journal'
 import { SaveFileSource } from './saveFileSource'
 import { loadSettings, saveSettings } from './store'
 
@@ -76,6 +77,9 @@ export async function setupIpc(): Promise<void> {
       return null
     }
   })
+
+  ipcMain.handle(IPC.journalGet, () => loadJournal())
+  ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
 
   await startSource()
 }

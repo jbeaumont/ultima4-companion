@@ -7,6 +7,8 @@ import {
 import type { ItemName } from '@domain/constants'
 import type { GameState } from '@shared/types'
 
+import { VirtueRow } from '../components/VirtueRow'
+
 const STONE_COLORS: Record<string, string> = {
   Blue: '#3b6fd9', Yellow: '#e6c53a', Red: '#d94a3b', Green: '#3fa85a',
   Orange: '#e48a2c', Purple: '#8a4fc7', White: '#ecece6', Black: '#2a2a33'
@@ -83,16 +85,7 @@ function Party({ p }: { p: PartySave }) {
 function Virtues({ p }: { p: PartySave }) {
   return (
     <Panel title="Virtues">
-      {VIRTUES.map((v, i) => {
-        const k = p.karma[i] ?? 0
-        return (
-          <div className="stat-row" key={v}>
-            <span>{v}</span>
-            <Bar value={k} max={99} cls={k === 0 ? '' : 'karma'} />
-            {k === 0 ? <span className="avatar" title="Partial Avatarhood">☥ Avatar</span> : <span>{k}</span>}
-          </div>
-        )
-      })}
+      {VIRTUES.map((v, i) => <VirtueRow key={v} name={v} karma={p.karma[i] ?? 0} />)}
     </Panel>
   )
 }

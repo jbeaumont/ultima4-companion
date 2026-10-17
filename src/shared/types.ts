@@ -33,7 +33,9 @@ export const IPC = {
   getSettings: 'settings:get',
   chooseDir: 'game:chooseDir',
   assetsBase: 'assets:base',
-  assetsLocation: 'assets:location'
+  assetsLocation: 'assets:location',
+  journalGet: 'journal:get',
+  journalSave: 'journal:save'
 } as const
 
 /** Raw bytes of the shared map assets; the renderer parses them. */

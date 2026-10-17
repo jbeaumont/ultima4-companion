@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCATIONS } from '@domain/constants'
 import { cellStyle, isRoomCell, roomIndex } from '@domain/dungeonGlyphs'
+import { MOONGATES, gateState } from '@domain/moongates'
 import { tileName } from '@domain/tiles'
 import { DUNGEON_LEVELS, DUNGEON_SIZE, ROOM_SIZE, decodeDungeonCell, parseDng } from '@parsers/dungeon'
 import type { Dungeon } from '@parsers/dungeon'
@@ -52,11 +53,46 @@ function drawParty(a: DrawArgs, atlas: TileAtlas, tx: number, ty: number): void 
   ctx.stroke()
 }
 
-function WorldMap({ base, party, center }: { base: Base; party: PartySave | null; center: number }) {
+/** Ring per Moongate; the open one (Trammel phase) is highlighted and labelled with where it leads (Felucca phase). */
+function drawGates(a: DrawArgs, party: PartySave | null): void {
+  const { ctx, vp, time } = a
+  const t = tilePx(vp.zoom)
+  const open = party ? gateState(party.trammel, party.felucca) : null
+  ctx.font = '12px sans-serif'
+  ctx.textBaseline = 'middle'
+  for (const g of MOONGATES) {
+    const s = tileToScreen(vp, g.x, g.y)
+    const cx = s.x + t / 2
+    const cy = s.y + t / 2
+    const isOpen = open?.open.phase === g.phase
+    const r = Math.max(t * 0.6, 6) + (isOpen ? 1.5 + 1.5 * Math.sin(time / 300) : 0)
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.lineWidth = isOpen ? 4 : 2.5
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)'
+    ctx.stroke()
+    ctx.lineWidth = isOpen ? 2.5 : 1.5
+    ctx.strokeStyle = isOpen ? '#6fe0ff' : 'rgba(150,170,255,0.8)'
+    ctx.stroke()
+    if (isOpen && open) {
+      const text = open.spirituality ? `${g.near} gate → Shrine of Spirituality` : `${g.near} gate → ${open.destination.near}`
+      const w = ctx.measureText(text).width
+      // flip the label to the left of the ring when it would run off the canvas
+      const left = cx + r + 4 + w + 10 > a.w ? cx - r - 4 - (w + 10) : cx + r + 4
+      ctx.fillStyle = 'rgba(5,5,10,0.8)'
+      ctx.fillRect(left, cy - 10, w + 10, 20)
+      ctx.fillStyle = '#6fe0ff'
+      ctx.fillText(text, left + 5, cy)
+    }
+  }
+}
+
+function WorldMap({ base, party, center, gates }: { base: Base; party: PartySave | null; center: number; gates: boolean }) {
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
   const here = party && party.location === 0 ? party : null
   const draw = (a: DrawArgs): void => {
     drawGrid(a.ctx, base.atlas, a.vp, WORLD_SIZE, WORLD_SIZE, a.w, a.h, (x, y) => base.world[y * WORLD_SIZE + x]!)
+    if (gates) drawGates(a, party)
     if (here) drawParty(a, base.atlas, here.x, here.y)
   }
   const tile = hover ? base.world[hover.y * WORLD_SIZE + hover.x]! : null
@@ -65,7 +101,7 @@ function WorldMap({ base, party, center }: { base: Base; party: PartySave | null
       <MapCanvas
         mapW={WORLD_SIZE} mapH={WORLD_SIZE} resetKey="world" initialZoom={here ? 1 : 'fit'}
         center={here ? { x: here.x, y: here.y, seq: center } : undefined}
-        animate={!!here} draw={draw} onHover={setHover}
+        animate={!!here || gates} draw={draw} onHover={setHover}
       />
       <div className="readout">
         {hover && tile !== null ? `${hover.x}, ${hover.y} — ${tileName(tile)}` : 'Drag to pan, scroll to zoom'}
@@ -195,6 +231,7 @@ export function MapView({ state }: { state: GameState | null }) {
   const [base, setBase] = useState<Loaded<Base>>({ status: 'loading' })
   const [sel, setSel] = useState(0)
   const [follow, setFollow] = useState(true)
+  const [gates, setGates] = useState(true)
   const [floor, setFloor] = useState(0)
   const [level, setLevel] = useState(0)
   const [centerSeq, setCenterSeq] = useState(0)
@@ -291,7 +328,7 @@ export function MapView({ state }: { state: GameState | null }) {
   else if (place.status === 'fail') body = <p className="muted">Could not load the files for this location.</p>
   else {
     const p = place.value
-    if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} />
+    if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} />
     else if (p.kind === 'settlement') {
       body = <SettlementMap base={base.value} id={sel} floors={p.floors} convs={p.convs} floor={floor} party={party} center={centerSeq} />
     } else body = <DungeonMap base={base.value} id={sel} dungeon={p.dungeon} level={level} onLevel={(l) => { setFollow(false); setLevel(l) }} party={party} />
@@ -312,6 +349,11 @@ export function MapView({ state }: { state: GameState | null }) {
         <label className="check">
           <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Follow party
         </label>
+        {kind === 'world' && (
+          <label className="check">
+            <input type="checkbox" checked={gates} onChange={(e) => setGates(e.target.checked)} /> Moongates
+          </label>
+        )}
         {kind !== 'dungeon' && party && <button className="btn small" onClick={recenter}>Center on party</button>}
         {kind === 'castle' && place.status === 'ok' && place.value.kind === 'settlement' && place.value.floors.length > 1 && (
           <span className="levels">
