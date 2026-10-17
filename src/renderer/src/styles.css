@@ -1,0 +1,19 @@
+:root {
+  --bg: #0b0b14;
+  --panel: #151526;
+  --text: #e6e2d3;
+  --muted: #8a8698;
+  --accent: #d9a441;
+  color-scheme: dark;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 180px; background: var(--panel); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+.sidebar h1 { font-size: 18px; color: var(--accent); margin: 0 0 12px; }
+.sidebar button { background: none; border: 0; color: var(--text); text-align: left; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.sidebar button:hover { background: #1f1f36; }
+.sidebar button.active { background: #2a2540; color: var(--accent); }
+.content { flex: 1; padding: 24px; overflow: auto; }
+.muted { color: var(--muted); }
