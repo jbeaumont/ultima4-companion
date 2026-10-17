@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { useGameState } from './useGameState'
+import { Settings } from './views/Settings'
+import { Tracker } from './views/Tracker'
 
 const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Dialogue', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
   const [view, setView] = useState<View>('Tracker')
+  const [state, setState] = useGameState()
 
   return (
     <div className="app">
@@ -17,8 +21,16 @@ export function App() {
         ))}
       </nav>
       <main className="content">
-        <h2>{view}</h2>
-        <p className="muted">Coming soon.</p>
+        {view === 'Tracker' ? (
+          <Tracker state={state} />
+        ) : view === 'Settings' ? (
+          <Settings state={state} onState={setState} />
+        ) : (
+          <>
+            <h2>{view}</h2>
+            <p className="muted">Coming soon.</p>
+          </>
+        )}
       </main>
     </div>
   )
