@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -10,10 +10,13 @@ import { getExplored, loadExplored, resetExplored, trackExplored } from './explo
 import { toggleHud } from './hud'
 import { loadJournal, recordJournalVisit, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
+import { setupSavesIpc } from './saves/savesIpc'
+import { SnapshotStore } from './saves/snapshots'
 import { loadSettings, saveSettings } from './store'
 
 let source: HybridSource | null = null
 let gameDir: string | null = null
+let autoSnapshot: (s: GameState) => void = () => {}
 
 const send = (channel: string, payload: unknown): void => {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload)
@@ -31,7 +34,7 @@ const onState = (state: GameState): void => {
 async function startSource(): Promise<void> {
   await source?.stop()
   gameDir = await locateGameDir(loadSettings().gameDir)
-  source = new HybridSource(gameDir, loadSettings().liveMemory !== false)
+  source = new HybridSource(gameDir, loadSettings().liveMemory !== false, (s) => autoSnapshot(s))
   source.start(onState)
 }
 
@@ -49,7 +52,8 @@ export async function setupIpc(): Promise<void> {
     savePath: pickSavePath(gameDir, existsSync),
     override: loadSettings().gameDir ?? null,
     liveMemory: loadSettings().liveMemory !== false,
-    attachedPid: source?.attachment()?.pid ?? null
+    attachedPid: source?.attachment()?.pid ?? null,
+    editorEnabled: loadSettings().editorEnabled === true
   }))
 
   ipcMain.handle(IPC.setLiveMemory, async (_e, on: unknown): Promise<GameState | null> => {
@@ -103,6 +107,8 @@ export async function setupIpc(): Promise<void> {
 
   ipcMain.handle(IPC.journalGet, () => loadJournal())
   ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
+
+  autoSnapshot = setupSavesIpc(new SnapshotStore(join(app.getPath('userData'), 'snapshots')), () => gameDir, send).autoSnapshot
 
   await loadExplored((bits) => send(IPC.exploredChanged, bits))
   await startSource()

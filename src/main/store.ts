@@ -13,6 +13,7 @@ export function loadSettings(): Settings {
     if (raw && typeof raw === 'object') {
       if (typeof raw.gameDir === 'string') out.gameDir = raw.gameDir
       if (typeof raw.liveMemory === 'boolean') out.liveMemory = raw.liveMemory
+      if (typeof raw.editorEnabled === 'boolean') out.editorEnabled = raw.editorEnabled
       const hud = parseHudBounds(raw.hudBounds)
       if (hud) out.hudBounds = hud
     }
