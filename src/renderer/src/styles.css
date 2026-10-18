@@ -307,6 +307,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .hud-foes { display: flex; flex-direction: column; gap: 3px; }
 .hud-foe { display: grid; grid-template-columns: minmax(0, 64px) 1fr; gap: 6px; align-items: center; }
 .fill.foe { background: linear-gradient(90deg, #8a2a2a, #e0604a); }
+.d-topic.d-elevate { border-left: 3px solid var(--accent); }
 
 /* Hawkwind's verdict under each virtue */
 .d-band { font-size: 11px; color: var(--muted); margin-top: 4px; }
