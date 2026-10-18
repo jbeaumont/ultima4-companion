@@ -297,3 +297,8 @@ a.btn { text-decoration: none; display: inline-block; }
 .b-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #8a2a2a, #e0604a); }
 .b-bar.mine > span { background: linear-gradient(90deg, #2f7a4f, #5fdc8f); }
 .b-hp { color: var(--muted); font-size: 12px; }
+
+/* shrine tips */
+.panel.d-shrine { grid-column: 1 / -1; border-color: #5a4a8a; }
+.d-shrine ol { margin: 6px 0 8px; padding-left: 20px; display: grid; gap: 4px; }
+.d-shrine-warn { color: #f2b84b; margin: 4px 0; }
