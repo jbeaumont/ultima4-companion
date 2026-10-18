@@ -24,6 +24,7 @@ const api = {
   chooseGameDir: (): Promise<GameState | null> => ipcRenderer.invoke(IPC.chooseDir),
   setLiveMemory: (on: boolean): Promise<GameState | null> => ipcRenderer.invoke(IPC.setLiveMemory, on),
   setEditorEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setEditorEnabled, on),
+  setSageEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setSageEnabled, on),
   listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),
   takeSnapshot: (label?: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsTake, label),
   restoreSnapshot: (id: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsRestore, id),

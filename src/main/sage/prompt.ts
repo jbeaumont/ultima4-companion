@@ -10,6 +10,8 @@ import type { SpoilerLevel } from '@domain/hints'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { progress } from '@domain/progress'
 
+export const SAGE_MODEL = 'claude-opus-5-5'
+
 export type Persona = 'hawkwind' | 'lordbritish'
 
 export const PERSONAS: Record<Persona, { name: string; voice: string }> = {

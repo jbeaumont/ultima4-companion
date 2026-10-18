@@ -5,10 +5,9 @@ import { safeStorage } from 'electron'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import type { SpoilerLevel } from '@domain/hints'
 import type { GameState } from '@shared/types'
-import { buildStateMessage, buildSystemPrompt } from './prompt'
+import { SAGE_MODEL, buildStateMessage, buildSystemPrompt } from './prompt'
 import type { Persona } from './prompt'
 
-export const SAGE_MODEL = 'claude-opus-5-5'
 const BETAS = ['server-side-fallback-2026-07-01', 'mid-conversation-system-clear-at-2026-08-21']
 
 export interface SageEvents {

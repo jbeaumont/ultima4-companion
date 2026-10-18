@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGameState } from './useGameState'
 import { Dialogue } from './views/Dialogue'
 import { Editor } from './views/Editor'
@@ -17,12 +17,24 @@ type View = (typeof VIEWS)[number]
 export function App() {
   const [view, setView] = useState<View>('Tracker')
   const [state, setState] = useGameState()
+  const [sageOn, setSageOn] = useState(false)
+  useEffect(() => {
+    const refresh = (): void => {
+      window.u4.getSettings().then((s) => setSageOn(s.sageEnabled), () => undefined)
+    }
+    refresh()
+    window.addEventListener('u4-settings-changed', refresh)
+    return () => window.removeEventListener('u4-settings-changed', refresh)
+  }, [])
+  useEffect(() => {
+    if (!sageOn && view === 'Sage') setView('Settings')
+  }, [sageOn, view])
 
   return (
     <div className="app">
       <nav className="sidebar">
         <h1>Ultima IV</h1>
-        {VIEWS.map((v) => (
+        {VIEWS.filter((v) => v !== 'Sage' || sageOn).map((v) => (
           <button key={v} className={v === view ? 'active' : ''} onClick={() => setView(v)}>
             {v}
           </button>
@@ -31,9 +43,11 @@ export function App() {
       </nav>
       <main className="content">
         {/* stays mounted so the transcript survives view switches (main keeps the conversation) */}
-        <div style={{ display: view === 'Sage' ? undefined : 'none' }}>
-          <Sage onNavigate={setView} />
-        </div>
+        {sageOn && (
+          <div style={{ display: view === 'Sage' ? undefined : 'none' }}>
+            <Sage onNavigate={setView} />
+          </div>
+        )}
         {view === 'Tracker' ? (
           <Tracker state={state} />
         ) : view === 'Map' ? (

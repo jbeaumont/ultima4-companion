@@ -55,7 +55,8 @@ export async function setupIpc(): Promise<void> {
     override: loadSettings().gameDir ?? null,
     liveMemory: loadSettings().liveMemory !== false,
     attachedPid: source?.attachment()?.pid ?? null,
-    editorEnabled: loadSettings().editorEnabled === true
+    editorEnabled: loadSettings().editorEnabled === true,
+    sageEnabled: loadSettings().sageEnabled === true
   }))
 
   ipcMain.handle(IPC.setLiveMemory, async (_e, on: unknown): Promise<GameState | null> => {

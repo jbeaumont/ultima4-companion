@@ -46,6 +46,18 @@ export function Settings({ state, onState }: Props) {
     }
   }
 
+  const toggleSage = async (on: boolean) => {
+    setBusy(true)
+    try {
+      await window.u4.setSageEnabled(on)
+      setInfo(await window.u4.getSettings())
+      window.dispatchEvent(new Event('u4-settings-changed'))
+    } finally {
+      setBusy(false)
+      refreshSage()
+    }
+  }
+
   const [sage, setSage] = useState<SageStatus | null>(null)
   const [keyInput, setKeyInput] = useState('')
   const [keyError, setKeyError] = useState<string | null>(null)
@@ -125,7 +137,18 @@ export function Settings({ state, onState }: Props) {
         </p>
       </section>
       <section className="panel settings">
-        <h3>AI sage</h3>
+        <h3>AI sage (optional)</h3>
+        <label className="check">
+          <input
+            type="checkbox" checked={info?.sageEnabled ?? false} disabled={!info || busy}
+            onChange={(e) => toggleSage(e.target.checked)}
+          /> Enable the AI sage
+        </label>
+        <p className="muted small">
+          An in-character advisor powered by Claude. It needs your own Anthropic API key and each question is billed to it.
+          While this is off, the Sage is hidden and nothing is sent anywhere.
+        </p>
+        {info?.sageEnabled && (<>
         <p className={sage && (sage.hasStoredKey || sage.envKey) ? 'ok' : 'muted'}>
           {!sage
             ? 'Checking…'
@@ -146,6 +169,7 @@ export function Settings({ state, onState }: Props) {
         </div>
         {keyError && <p className="result error">{keyError}</p>}
         <p className="muted small">Your key never leaves this computer except in requests to Anthropic.</p>
+        </>)}
       </section>
     </>
   )

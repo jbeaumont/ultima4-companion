@@ -20,6 +20,8 @@ export interface Settings {
   hudBounds?: HudBounds
   /** Allow editing the save (off by default). */
   editorEnabled?: boolean
+  /** Show the optional AI sage (off by default; nothing Anthropic-related loads until on). */
+  sageEnabled?: boolean
 }
 
 export interface SettingsInfo {
@@ -30,6 +32,7 @@ export interface SettingsInfo {
   /** DOSBox process currently attached by the memory reader. */
   attachedPid: number | null
   editorEnabled: boolean
+  sageEnabled: boolean
 }
 
 /** A producer of GameState: save-file watcher, memory reader, or both (HybridSource). */
@@ -45,6 +48,7 @@ export const IPC = {
   chooseDir: 'game:chooseDir',
   setLiveMemory: 'settings:liveMemory',
   setEditorEnabled: 'settings:editorEnabled',
+  setSageEnabled: 'settings:sageEnabled',
   snapshotsList: 'snapshots:list',
   snapshotsTake: 'snapshots:take',
   snapshotsRestore: 'snapshots:restore',

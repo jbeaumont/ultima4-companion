@@ -14,6 +14,7 @@ export function loadSettings(): Settings {
       if (typeof raw.gameDir === 'string') out.gameDir = raw.gameDir
       if (typeof raw.liveMemory === 'boolean') out.liveMemory = raw.liveMemory
       if (typeof raw.editorEnabled === 'boolean') out.editorEnabled = raw.editorEnabled
+      if (typeof raw.sageEnabled === 'boolean') out.sageEnabled = raw.sageEnabled
       const hud = parseHudBounds(raw.hudBounds)
       if (hud) out.hudBounds = hud
     }
