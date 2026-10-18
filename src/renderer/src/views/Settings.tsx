@@ -35,6 +35,16 @@ export function Settings({ state, onState }: Props) {
     }
   }
 
+  const toggleEditor = async (on: boolean) => {
+    setBusy(true)
+    try {
+      await window.u4.setEditorEnabled(on)
+      setInfo(await window.u4.getSettings())
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <h2>Settings</h2>
@@ -67,6 +77,18 @@ export function Settings({ state, onState }: Props) {
             {info.attachedPid !== null ? `Attached to DOSBox (PID ${info.attachedPid})` : 'Not attached'}
           </p>
         )}
+      </section>
+      <section className="panel settings">
+        <h3>Save editor</h3>
+        <label className="check">
+          <input
+            type="checkbox" checked={info?.editorEnabled ?? false} disabled={!info || busy}
+            onChange={(e) => toggleEditor(e.target.checked)}
+          /> Enable save editor
+        </label>
+        <p className="note">
+          This lets the Editor change your real save. A backup is always taken first, and DOSBox must be closed.
+        </p>
       </section>
     </>
   )

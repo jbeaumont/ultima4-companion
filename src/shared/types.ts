@@ -18,6 +18,8 @@ export interface Settings {
   liveMemory?: boolean
   /** Last position and size of the pop-out HUD window. */
   hudBounds?: HudBounds
+  /** Allow editing the save (off by default). */
+  editorEnabled?: boolean
 }
 
 export interface SettingsInfo {
@@ -27,6 +29,7 @@ export interface SettingsInfo {
   liveMemory: boolean
   /** DOSBox process currently attached by the memory reader. */
   attachedPid: number | null
+  editorEnabled: boolean
 }
 
 /** A producer of GameState: save-file watcher, memory reader, or both (HybridSource). */
@@ -41,6 +44,14 @@ export const IPC = {
   getSettings: 'settings:get',
   chooseDir: 'game:chooseDir',
   setLiveMemory: 'settings:liveMemory',
+  setEditorEnabled: 'settings:editorEnabled',
+  snapshotsList: 'snapshots:list',
+  snapshotsTake: 'snapshots:take',
+  snapshotsRestore: 'snapshots:restore',
+  snapshotsDelete: 'snapshots:delete',
+  snapshotsChanged: 'snapshots:changed',
+  editorLoad: 'editor:load',
+  editorApply: 'editor:apply',
   assetsBase: 'assets:base',
   assetsLocation: 'assets:location',
   journalGet: 'journal:get',

@@ -11,7 +11,8 @@ export class HybridSource implements StateSource {
   private memState: GameState | null = null
   private onState: (s: GameState) => void = () => {}
 
-  constructor(gameDir: string | null, liveMemory: boolean) {
+  /** @param onFile called with every save-file state, even while live memory is shown (used for snapshots) */
+  constructor(gameDir: string | null, liveMemory: boolean, private readonly onFile?: (s: GameState) => void) {
     this.file = new SaveFileSource(gameDir)
     this.memory = liveMemory
       ? new MemorySource(
@@ -25,6 +26,7 @@ export class HybridSource implements StateSource {
     this.onState = onState
     this.file.start((s) => {
       this.fileState = s
+      this.onFile?.(s)
       if (!this.memState) onState(s)
     })
     this.memory?.start((s) => {

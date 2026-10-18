@@ -1,4 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { PartySave } from '@parsers/party'
+import type { SavesResult } from '../main/saves/savesIpc'
+import type { SnapshotMeta } from '../main/saves/snapshots'
 import { IPC } from '@shared/types'
 import type { Journal } from '@shared/journal'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
@@ -15,6 +18,18 @@ const api = {
   getSettings: (): Promise<SettingsInfo> => ipcRenderer.invoke(IPC.getSettings),
   chooseGameDir: (): Promise<GameState | null> => ipcRenderer.invoke(IPC.chooseDir),
   setLiveMemory: (on: boolean): Promise<GameState | null> => ipcRenderer.invoke(IPC.setLiveMemory, on),
+  setEditorEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setEditorEnabled, on),
+  listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),
+  takeSnapshot: (label?: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsTake, label),
+  restoreSnapshot: (id: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsRestore, id),
+  deleteSnapshot: (id: string): Promise<SavesResult<null>> => ipcRenderer.invoke(IPC.snapshotsDelete, id),
+  onSnapshots: (cb: (list: SnapshotMeta[]) => void): (() => void) => {
+    const handler = (_e: unknown, list: SnapshotMeta[]) => cb(list)
+    ipcRenderer.on(IPC.snapshotsChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.snapshotsChanged, handler)
+  },
+  loadEditor: (): Promise<SavesResult<{ party: PartySave; path: string; gameRunning: boolean }>> => ipcRenderer.invoke(IPC.editorLoad),
+  applyEdit: (party: PartySave): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.editorApply, party),
   getBaseAssets: (): Promise<BaseAssets | null> => ipcRenderer.invoke(IPC.assetsBase),
   getLocationAssets: (id: number): Promise<LocationAssets | null> => ipcRenderer.invoke(IPC.assetsLocation, id),
   getJournal: (): Promise<Journal> => ipcRenderer.invoke(IPC.journalGet),
