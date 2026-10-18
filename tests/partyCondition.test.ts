@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import type { PartySave } from '@parsers/party'
-import { partyAlerts } from '../src/domain/partyCondition'
+import { lordBritishMaxHp, partyAlerts } from '../src/domain/partyCondition'
 
 const base = parsePartySav(new Uint8Array(PARTY_SAV_SIZE))
 const member = (over: Partial<PartySave['members'][number]>) => ({ ...base.allRecords[0]!, ...over })
@@ -25,5 +25,11 @@ describe('partyAlerts', () => {
 
   it('stays quiet for a healthy party', () => {
     expect(partyAlerts({ ...p, members: [member({ status: 'G', hp: 150, hpMax: 200 })] })).toEqual([])
+  })
+
+  it('knows when Lord British would raise a level', () => {
+    expect([0, 99, 100, 199, 200, 450, 6400, 9999].map(lordBritishMaxHp)).toEqual([100, 100, 200, 200, 300, 400, 800, 800])
+    const ready = partyAlerts({ ...p, members: [member({ name: 'Danny', status: 'G', hp: 200, hpMax: 200, xp: 450 })] })
+    expect(ready).toEqual([{ level: 'good', text: 'Danny can reach level 4', hint: expect.stringMatching(/Lord British/) }])
   })
 })
