@@ -134,8 +134,11 @@ export function Dialogue({ state }: { state: GameState | null }) {
 
   if (!journal) return <><h2>Dialogue</h2><p className="muted">Loading…</p></>
 
-  const town = sel && unlocked(sel.locationId) ? TOWNS.find((t) => t.locationId === sel.locationId) : undefined
-  const npc = town?.npcs.find((n) => n.index === sel?.index)
+  // until the player picks one, open on the settlement the party is in
+  const hereTown = TOWNS.find((t) => t.locationId === here)
+  const current: Sel | null = sel ?? (hereTown && unlocked(here) ? { locationId: here, index: hereTown.npcs[0]?.index ?? 0 } : null)
+  const town = current && unlocked(current.locationId) ? TOWNS.find((t) => t.locationId === current.locationId) : undefined
+  const npc = town?.npcs.find((n) => n.index === current?.index)
   const showLeads = journal.spoilerLevel !== 'off'
 
   const toggleAll = (on: boolean): void => {
@@ -192,7 +195,7 @@ export function Dialogue({ state }: { state: GameState | null }) {
             return (
               <button
                 key={t.locationId} disabled={!ok}
-                className={`town${sel?.locationId === t.locationId ? ' active' : ''}`}
+                className={`town${current?.locationId === t.locationId ? ' active' : ''}`}
                 onClick={() => setSel({ locationId: t.locationId, index: t.npcs[0]?.index ?? 0 })}
               >
                 <span>{t.location}{t.locationId === here && <span className="here"> ● you are here</span>}</span>
@@ -200,7 +203,7 @@ export function Dialogue({ state }: { state: GameState | null }) {
               </button>
             )
           })}
-          {mode === 'visited' && <p className="muted small">Towns unlock when your saved game shows you inside them.</p>}
+          {mode === 'visited' && <p className="muted small">Towns unlock once you have been inside them.</p>}
         </nav>
 
         <div className="dialogue-main">
