@@ -7,7 +7,7 @@ import { parseWorldMap, WORLD_SIZE } from '../../src/parsers/worldMap'
 import { findRoute } from '../../src/domain/pathfind'
 import { stepCost } from '../../src/domain/walkable'
 import type { Dir, Grid } from '../../src/domain/pathfind'
-import { planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
+import { SPELL_CAST, planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
 import { BATTLE_DS, parseBattle } from '../../src/parsers/battle'
 import type { BattleMonster } from '../../src/parsers/battle'
 import type { CombatAction, CombatView } from '../../src/domain/combatPlan'
@@ -294,6 +294,7 @@ export class GameDriver {
     const side = (v: number) => (v === 0xff ? -1 : v)
     const exit = ex ? { x: side(ex) } : ey ? { y: side(ey) } : null
     const me = awaiting ?? 0
+    const party0 = this.state()
     return {
       mode,
       awaiting,
@@ -303,7 +304,8 @@ export class GameDriver {
         monsters: state.monsters,
         party,
         me,
-        reach: weaponReach(this.state().members[me]?.weapon ?? 0),
+        reach: weaponReach(party0.members[me]?.weapon ?? 0),
+        support: { members: party0.members, mp: party0.members[me]?.mp ?? 0, mixtures: party0.mixtures },
         room: state.room,
         exit
       }
@@ -325,10 +327,17 @@ export class GameDriver {
   private async act(a: CombatAction): Promise<void> {
     if (a.kind === 'pass') this.key('space')
     else if (a.kind === 'move') this.key(a.dir)
-    else {
+    else if (a.kind === 'attack') {
       this.key('a')
       await sleep(40)
       this.key(a.dir)
+    } else {
+      // C, spell letter, then the member's number or a direction (U4_SPELL.C)
+      this.key('c')
+      await sleep(120)
+      this.key(SPELL_CAST[a.spell].letter)
+      await sleep(120)
+      this.key(a.who !== undefined ? String(a.who + 1) : a.dir!)
     }
   }
 
@@ -347,7 +356,8 @@ export class GameDriver {
       const me = b.awaiting!
       const action = planCombatTurn({ ...b.view, prefer: opts.exitToward }, opts.goal ?? 'fight')
       const at = b.view.party[me]!
-      log.push(`${start.members[me]?.name ?? me}@${at.x},${at.y} ${action.kind}${action.kind === 'pass' ? '' : ' ' + action.dir} (${b.monsters.length} monsters)`)
+      const what = action.kind === 'pass' ? '' : action.kind === 'cast' ? ` ${action.spell} ${action.who !== undefined ? `on ${start.members[action.who]?.name}` : action.dir}` : ` ${action.dir}`
+      log.push(`${start.members[me]?.name ?? me}@${at.x},${at.y} ${action.kind}${what} (${b.monsters.length} monsters)`)
       await this.act(action)
       // the member's command is done when the prompt clears or passes to someone else
       const until = Date.now() + 5000

@@ -75,6 +75,28 @@ describe('planCombatTurn', () => {
   })
 })
 
+describe('battle spells', () => {
+  const party = (over: Partial<{ hp: number; hpMax: number; status: string }>[]) => over.map((m) => ({ hp: 200, hpMax: 200, status: 'G', ...m }))
+  const mixtures = (spells: Record<number, number>) => Array.from({ length: 26 }, (_, i) => spells[i] ?? 0)
+
+  it('cures a poisoned member when the Cure mixture and the magic are there', () => {
+    const v = view({ monsters: [{ x: 6, y: 5 }], support: { members: party([{}, { status: 'P' }]), mp: 20, mixtures: mixtures({ 2: 1 }) } })
+    expect(planCombatTurn(v)).toEqual({ kind: 'cast', spell: 'cure', who: 1 })
+  })
+
+  it('heals first, and never casts without enough magic or a mixture', () => {
+    const members = party([{ hp: 50 }, { status: 'P' }])
+    expect(planCombatTurn(view({ support: { members, mp: 20, mixtures: mixtures({ 2: 1, 7: 1 }) } }))).toEqual({ kind: 'cast', spell: 'heal', who: 0 })
+    expect(planCombatTurn(view({ monsters: [{ x: 6, y: 5 }], support: { members, mp: 4, mixtures: mixtures({ 2: 1, 7: 1 }) } })).kind).toBe('attack')
+    expect(planCombatTurn(view({ monsters: [{ x: 6, y: 5 }], support: { members, mp: 50, mixtures: mixtures({}) } })).kind).toBe('attack')
+  })
+
+  it('fires a magic missile at a foe in line that weapons cannot reach', () => {
+    const v = view({ monsters: [{ x: 5, y: 1 }], support: { members: party([{}]), mp: 10, mixtures: mixtures({ 12: 1 }) } })
+    expect(planCombatTurn(v)).toEqual({ kind: 'cast', spell: 'missile', dir: 'up' })
+  })
+})
+
 describe('dungeon routing', () => {
   it('walls and energy fields block; rooms only as the goal', () => {
     expect(dungeonStepCost(0xf0, false)).toBeNull()
