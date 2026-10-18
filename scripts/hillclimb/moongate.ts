@@ -39,6 +39,7 @@ async function main(): Promise<void> {
   const names = s0.allRecords.slice(0, Math.max(1, s0.memberCount)).map((r) => r.name)
 
   const c = await Companion.connect()
+  await c.freshJournal() // checks must not pass on an earlier run's journal
   await launchGame({ profile: 'test', gameDir: GAME, overlayDir: OVERLAY, confDir: TEST_DATA })
   const d = await GameDriver.attach(GAME, names)
   await d.journeyOnward()

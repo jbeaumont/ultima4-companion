@@ -113,6 +113,15 @@ export class Companion {
     return this.eval<string>(`(document.querySelector('main') ?? document.body).innerText`)
   }
 
+  /** Test instance: empty the journal and reload the page so no view keeps an old copy. */
+  async freshJournal(): Promise<void> {
+    const r = await this.eval<{ ok: boolean }>('window.u4.resetTestJournal()')
+    if (!r.ok) throw new Error('journal reset refused (not a test instance?)')
+    await this.eval('location.reload()').catch(() => undefined)
+    await sleep(500)
+    if (!(await this.until('document.querySelector(".sidebar") !== null', 30000))) throw new Error('the companion did not come back after reload')
+  }
+
   async state<T = Record<string, unknown>>(): Promise<T> {
     return this.eval<T>('window.u4.getState()')
   }

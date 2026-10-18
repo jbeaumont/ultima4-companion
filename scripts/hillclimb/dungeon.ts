@@ -53,6 +53,7 @@ async function main(): Promise<void> {
   const OUT = process.argv[2] ?? join(process.cwd(), 'hillclimb-out')
   mkdirSync(OUT, { recursive: true })
   const c = await Companion.connect()
+  await c.freshJournal() // checks must not pass on an earlier run's journal
   const capture = async (tag: string) => {
     for (const v of ['Dashboard', 'Map']) {
       writeFileSync(join(OUT, `${tag}-${v}.txt`), await c.view(v, v === 'Map' ? 1500 : 700))

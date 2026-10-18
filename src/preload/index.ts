@@ -33,6 +33,8 @@ const api = {
     ipcRenderer.on(IPC.dungeonFogChanged, handler)
     return () => ipcRenderer.removeListener(IPC.dungeonFogChanged, handler)
   },
+  /** Test instance only: an empty journal (keeps the hint level), for hill-climb journeys. */
+  resetTestJournal: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.resetTestJournal),
   seedTestSaves: (from: 'real' | 'empty'): Promise<{ ok: true } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.seedTestSaves, from),
   listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),
   takeSnapshot: (label?: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsTake, label),
