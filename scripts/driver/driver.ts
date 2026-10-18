@@ -21,6 +21,7 @@ import { findDosboxWindow, focusByClick, foregroundTitle, postKey, processHasFoc
 import type { Key } from './input'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const DOOR = 59 // unlocked door; 58 is locked and needs a key
 
 // Game globals as offsets in the data segment (u4-decompiled U4.H). The party
 // block found in memory is `Party` at DS:9144, which gives the segment base.
@@ -56,6 +57,8 @@ export class GameDriver {
   private address = 0n
   private grids = new Map<number, Grid>()
   log: (msg: string) => void = (m) => console.log(m)
+  /** Log every walking step that doesn't simply succeed (for diagnosing slow walks). */
+  trace = false
 
   private constructor(
     readonly pid: number,
@@ -191,13 +194,26 @@ export class GameDriver {
       }
       if (!route?.length) throw new DriverError(`No route from ${s.x},${s.y} to ${tx},${ty} in location ${s.location} (avoiding ${[...blocked.keys()].join(" ") || "nothing"})`)
       const dir: Dir = route[0]!
+      const [dx, dy] = dir === 'up' ? [0, -1] : dir === 'down' ? [0, 1] : dir === 'left' ? [-1, 0] : [1, 0]
+      const g = this.grid(s.location)
+      const nx = g.wrap ? (s.x + dx + g.width) % g.width : s.x + dx
+      const ny = g.wrap ? (s.y + dy + g.height) % g.height : s.y + dy
+      if (s.location !== 0 && g.tileAt(nx, ny) === DOOR) {
+        // the game opens doors with O, and only to the east or west (U4_EXPLO.C CMD_Open)
+        if (dy !== 0) {
+          blocked.set(`${nx},${ny}`, step)
+          continue
+        }
+        await this.press('o', 300)
+        await this.press(dir, 300)
+      }
+      const t0 = Date.now()
       const r = await this.press(dir)
+      if (this.trace && (r.after.x === s.x && r.after.y === s.y)) this.log(`  ${s.x},${s.y} ${dir}: refused after ${Date.now() - t0} ms`)
+      // poison and starvation keep hurting while you walk; a dead Avatar wakes at Lord British's after a long sequence
+      if (r.after.allRecords[0]?.status === 'D') throw new DriverError(`The Avatar died while walking (at ${s.x},${s.y})`)
       if (r.after.location !== s.location) throw new DriverError(`Left the map while walking (now location ${r.after.location})`)
       if (r.after.x === s.x && r.after.y === s.y) {
-        const [dx, dy] = dir === 'up' ? [0, -1] : dir === 'down' ? [0, 1] : dir === 'left' ? [-1, 0] : [1, 0]
-        const g = this.grid(s.location)
-        const nx = g.wrap ? (s.x + dx + g.width) % g.width : s.x + dx
-        const ny = g.wrap ? (s.y + dy + g.height) % g.height : s.y + dy
         // slow ground (brush, forest, hills, swamp) refuses steps at random: retry before routing around it
         const k = `${nx},${ny}`
         const tries = (fails.get(k) ?? 0) + 1
