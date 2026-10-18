@@ -24,6 +24,10 @@ const GetWindowRect = user32.func('bool __stdcall GetWindowRect(void* hwnd, _Out
 const GetCursorPos = user32.func('bool __stdcall GetCursorPos(_Out_ POINT* p)')
 const SetCursorPos = user32.func('bool __stdcall SetCursorPos(int x, int y)')
 const mouse_event = user32.func('void __stdcall mouse_event(uint32 flags, uint32 dx, uint32 dy, uint32 data, uintptr extra)')
+const SetWindowPos = user32.func('bool __stdcall SetWindowPos(void* hwnd, intptr after, int x, int y, int cx, int cy, uint32 flags)')
+const HWND_TOPMOST = -1
+const HWND_NOTOPMOST = -2
+const SWP_KEEP = 0x0001 | 0x0002 | 0x0010 // NOSIZE | NOMOVE | NOACTIVATE
 
 
 /** Virtual-key code, scan code, and whether the key is an extended key. */
@@ -134,10 +138,13 @@ export function focusByClick(hwnd: unknown): boolean {
   if (!GetWindowRect(hwnd, r)) return false
   const saved: Record<string, number> = {}
   GetCursorPos(saved)
+  // lift DOSBox above any window covering it (allowed without focus), so the click lands on it
+  SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_KEEP)
   SetCursorPos(r.left! + 60, r.top! + 80) // inside the game screen, clear of the title bar
   mouse_event(0x0002, 0, 0, 0, 0) // LEFTDOWN
   mouse_event(0x0004, 0, 0, 0, 0) // LEFTUP
   SetCursorPos(saved.x ?? 0, saved.y ?? 0)
+  SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_KEEP)
   return hasFocus(hwnd)
 }
 
