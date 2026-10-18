@@ -62,7 +62,8 @@ describe('parsePartySav (synthetic)', () => {
 })
 
 describe.skipIf(!hasGame)('parsePartySav (real install)', () => {
-  const s = parsePartySav(gameFile('PARTY.SAV'))
+  // the block body still runs when skipped, so only read the install when it exists
+  const s = hasGame ? parsePartySav(gameFile('PARTY.SAV')) : parsePartySav(new Uint8Array(PARTY_SAV_SIZE))
 
   it('reads the default companions', () => {
     const names = s.allRecords.map((r) => r.name)
