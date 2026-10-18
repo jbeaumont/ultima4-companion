@@ -1,3 +1,4 @@
+import type { BattleState } from '@parsers/battle'
 import type { PartySave } from '@parsers/party'
 import type { HudBounds } from './hudBounds'
 
@@ -12,6 +13,8 @@ export interface GameState {
   party: PartySave | null
   /** Live mode only: moves made since the last save (null when it can't be compared). */
   unsavedMoves?: number | null
+  /** Live mode only: the battle in progress, if any. */
+  battle?: BattleState | null
 }
 
 export interface Settings {

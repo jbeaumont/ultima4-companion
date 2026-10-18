@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BattlePanel } from './components/BattlePanel'
 import { useGameState } from './useGameState'
 import { Dashboard } from './views/Dashboard'
 import { Dialogue } from './views/Dialogue'
@@ -79,7 +80,10 @@ export function App() {
         ) : view === 'Tracker' ? (
           <Tracker state={state} />
         ) : view === 'Map' ? (
-          <MapView state={state} />
+          <>
+            {state?.battle && state.party && <BattlePanel battle={state.battle} party={state.party} />}
+            <MapView state={state} />
+          </>
         ) : view === 'Journal' ? (
           <JournalView state={state} />
         ) : view === 'Hints' ? (

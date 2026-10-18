@@ -55,3 +55,10 @@ A test instance can never touch the player's saves or companion data.
 - Memory map: globals are read at fixed data-segment offsets from u4-decompiled `U4.H` (DS base = party block address - 0x9144): CurMode 946A, Combat 9470 (monster x/y, member x/y, 11x11 map at 94B0), Fighters 9530 (monster tile/HP, member `_chtile`), activeChara 959A, activeCharaX 080A (not -1 while a member's command is awaited), room exit 96EE/96F4, dungeon map 8742.
 - Not supported yet: spells and items in battle, and conversations (typed keywords; the game draws text as graphics).
 - Confirmed live: in towns x,y are town coordinates and out_x/out_y the surface return point; DOSBox restarts are reattached automatically; Quit & Save answers "Not Here!" off the surface; the Rune of Honesty hint (town 8,6) works.
+
+### Hill-climbing the companion
+`scripts/hillclimb/` runs a journey with the driver and, at each checkpoint, captures what the test companion shows (view text + screenshots via CDP, `companion.ts` starts `npm run dev:test` if needed), then checks expectations. Review the captures, fix gaps, rerun.
+- `npx tsx scripts/hillclimb/first-rune.ts <outDir>`: outside Moonglow, inside, and after finding the Rune of Honesty (Dashboard, Map, Journal, Hints, Dialogue). About 25 s.
+- `npx tsx scripts/hillclimb/dungeon.ts <outDir>`: Despise on entry, at the start and middle of the room battle, and on level 2 (Dashboard, Map); asserts the companion's battle view matches the game and clears afterwards. About 35 s.
+- Live battle view: in memory mode `GameState.battle` (`src/parsers/battle.ts`, shared with the driver) carries the combat map, monsters (name, HP, HP when first seen) and party positions; `BattlePanel` shows it on the Dashboard and above the Map. After changing main-process code, restart the test companion: it does not reload main on its own.
+- Write captures to the session scratchpad, not the repo. A freshly started companion can lag a few seconds before going live; the journeys wait for it.

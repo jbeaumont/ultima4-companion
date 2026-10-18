@@ -8,8 +8,10 @@ import { parseWorldMap, WORLD_SIZE } from '../../src/parsers/worldMap'
 import { LOCATIONS } from '../../src/domain/constants'
 import { findRoute } from '../../src/domain/pathfind'
 import type { Dir, Grid } from '../../src/domain/pathfind'
-import { COMBAT_SIZE, planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
-import type { CombatAction, CombatView, Point } from '../../src/domain/combatPlan'
+import { planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
+import { BATTLE_DS, parseBattle } from '../../src/parsers/battle'
+import type { BattleMonster } from '../../src/parsers/battle'
+import type { CombatAction, CombatView } from '../../src/domain/combatPlan'
 import { DNG_SIZE, dungeonRoute, stepKeys } from '../../src/domain/dungeonRoute'
 import { looksLikeParty } from '../../src/main/memory/scan'
 import { scanProcess } from '../../src/main/memory/memorySource'
@@ -24,12 +26,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // Game globals as offsets in the data segment (u4-decompiled U4.H). The party
 // block found in memory is `Party` at DS:9144, which gives the segment base.
 const DS = {
-  party: 0x9144,
+  ...BATTLE_DS,
   dungeonMap: 0x8742, // D_8742._map.x8x8x8[z][y][x] while in a dungeon
-  curMode: 0x946a,
-  combat: 0x9470, // _npcX[16] _npcY[16] _charaX[8] _charaY[8] pad[16] _map[121]
-  fighters: 0x9530, // _x _y _HP _tile _gtile _sleeping [16] each, _chtile[8]
-  activeChara: 0x959a,
   activeCharaX: 0x080a, // -1 except while a member's command is being taken
   roomExitX: 0x96ee,
   roomExitY: 0x96f4
@@ -43,7 +41,7 @@ export interface Battle {
   awaiting: number | null
   view: CombatView
   /** Live monsters with their HP. */
-  monsters: (Point & { tile: number; hp: number })[]
+  monsters: BattleMonster[]
 }
 
 export interface BattleResult {
@@ -243,15 +241,9 @@ export class GameDriver {
   /** Snapshot of the battle in progress. */
   battle(): Battle {
     const mode = this.mode()
-    const c = this.ds(DS.combat, 0x40 + COMBAT_SIZE * COMBAT_SIZE)
-    const f = this.ds(DS.fighters, 0x68)
-    const s = this.state()
-    const monsters: Battle['monsters'] = []
-    for (let i = 0; i < 16; i++) {
-      if (f[0x30 + i]) monsters.push({ x: c[i]!, y: c[0x10 + i]!, tile: f[0x30 + i]!, hp: f[0x20 + i]! })
-    }
-    const party = Array.from({ length: 8 }, (_, i) => (f[0x60 + i] ? { x: c[0x20 + i]!, y: c[0x28 + i]! } : null))
-    const active = this.i16(DS.activeChara)
+    const state = parseBattle(mode, this.ds(DS.combat, BATTLE_DS.combatSize), this.ds(DS.fighters, BATTLE_DS.fightersSize), this.i16(DS.activeChara))
+    const party = state.party.map((p) => (p ? { x: p.x, y: p.y } : null))
+    const active = state.active
     const awaiting = this.i16(DS.activeCharaX) !== -1 && active >= 0 && active < 8 && party[active] ? active : null
     const ex = this.i16(DS.roomExitX) & 0xff
     const ey = this.i16(DS.roomExitY) & 0xff
@@ -261,14 +253,14 @@ export class GameDriver {
     return {
       mode,
       awaiting,
-      monsters,
+      monsters: state.monsters,
       view: {
-        map: c.slice(0x40, 0x40 + COMBAT_SIZE * COMBAT_SIZE),
-        monsters,
+        map: Uint8Array.from(state.map),
+        monsters: state.monsters,
         party,
         me,
-        reach: weaponReach(s.members[me]?.weapon ?? 0),
-        room: mode === MODE.room,
+        reach: weaponReach(this.state().members[me]?.weapon ?? 0),
+        room: state.room,
         exit
       }
     }

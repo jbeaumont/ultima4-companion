@@ -5,11 +5,13 @@ import { COMPANIONS, STATUS_TEXT, companionStatus } from '@domain/companions'
 import { cooldowns } from '@domain/cooldowns'
 import { suggestedTopics } from '@domain/hints'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
+import { partyAlerts } from '@domain/partyCondition'
 import { progress } from '@domain/progress'
 import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import { timerLabel } from '@shared/format'
 import type { GameState } from '@shared/types'
+import { BattlePanel } from '../components/BattlePanel'
 import { useDashboardArt } from '../useDashboardArt'
 import type { DashboardArt } from '../useDashboardArt'
 import { useJournal } from '../useJournal'
@@ -35,6 +37,7 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
   const chip = unsavedChip(state.unsavedMoves, canSaveHere(p))
   const g = gateState(p.trammel, p.felucca)
   const live = state.source === 'memory'
+  const alerts = partyAlerts(p)
   return (
     <section className="d-hero">
       {art && <img src={art.avatar} alt="" />}
@@ -48,6 +51,10 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
         <div className="d-sub">{whereLine(p)} · {p.moves} moves</div>
       </div>
       <div className="d-chips">
+        {alerts.slice(0, 3).map((a) => (
+          <span key={a.text} className={`d-chip unsaved ${a.level}`} title={a.hint}>{a.text} · {a.hint}</span>
+        ))}
+        {alerts.length > 3 && <span className="d-chip unsaved warn" title={alerts.slice(3).map((a) => a.text).join(', ')}>+{alerts.length - 3} more</span>}
         <span className={`d-chip${live ? ' live' : ''}`}>{live ? '● LIVE (memory)' : 'Save file'}</span>
         {chip && <span className={`d-chip unsaved ${chip.level}`} title={chip.hint}>{chip.text} · {chip.hint.split(' · ')[1]}</span>}
         <span className="d-chip">Trammel {PHASE_NAMES[p.trammel & 7]!.toLowerCase()} · Felucca {PHASE_NAMES[p.felucca & 7]!.toLowerCase()}</span>
@@ -185,6 +192,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
   return (
     <div className="dash">
       <Hero state={state!} p={p} art={art} />
+      {state?.battle && <BattlePanel battle={state.battle} party={p} />}
       <VirtueCards p={p} art={art} />
       <aside className="d-right">
         <Quest p={p} />
