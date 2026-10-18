@@ -2,12 +2,15 @@ import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import { closeHud } from './hud'
 import { setupIpc } from './ipc'
+import { TEST_MODE, applyMode } from './mode'
+
+applyMode()
 
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 860,
-    title: 'Ultima IV Companion',
+    title: TEST_MODE ? 'Ultima IV Companion (TEST)' : 'Ultima IV Companion',
     backgroundColor: '#0b0b14',
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.mjs'),

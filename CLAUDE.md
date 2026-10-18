@@ -8,6 +8,8 @@ Full roadmap: see the "Milestones" section of README.md.
 - `npm test` — Vitest; tests in `tests/` against the real install are skipped when it is absent
 - `npm run typecheck` — TypeScript 7 (`tsc --noEmit`)
 - `npm run extract` — regenerate `data/` (tile atlas, dialogue JSON) from the install
+- `npm run dev:test` — a separate **test instance** (see Play-testing below), remote debugging on port 9241
+- `npm run dist` — Windows installer in `release/`
 
 ## Layout
 - `src/parsers/` — pure byte parsers for every game file; no Node/Electron imports so main and renderer can share them
@@ -27,3 +29,14 @@ Full roadmap: see the "Milestones" section of README.md.
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
+- Play-test only in a test instance; never kill a DOSBox the player launched without asking
+
+## Play-testing (computer use)
+A test instance can never touch the player's saves or companion data.
+- `npm run dev:test` starts the companion in test mode (env `U4C_TEST=1`; `--test` also works when Electron is started directly): its own userData (`%APPDATA%\ultima4-companion-test`), so journal, fog, snapshots and settings are separate. The game it launches uses the test save overlay `game-saves\` inside that folder.
+- Launch: sidebar "Launch test game (turbo)", or `node scripts/cdp.mjs 9241 eval "window.u4.launchGame()"`. The `test` profile runs DOSBox at `cycles=max`, windowed 960x600 at screen 0,0 (fixed, so computer-use coordinates are stable). Configs are generated into userData; the game folder is never modified.
+- Seed (DOSBox closed): `window.u4.seedTestSaves('real')` copies the player's current save in (read-only on the real save); `'empty'` gives a fresh folder for Initiate New Game.
+- At turbo speed keystrokes need no waits, so batch whole walks in one computer_batch. Title menu: any key, then `J` (Journey Onward). Arrows move; `E` enters a town or dungeon; `S` searches; `Q` saves (surface only).
+- Inspect: `node scripts/cdp.mjs 9241 state` (position, location, unsaved moves, visited, snapshots); `... view Map`; `... shot out.png`; `... hud out.png`. Keep screenshots in the session scratchpad, not the repo.
+- Set up later-game states quickly with the guarded Editor in the test instance (DOSBox must be closed to write).
+- Confirmed live: in towns x,y are town coordinates and out_x/out_y the surface return point; DOSBox restarts are reattached automatically; Quit & Save answers "Not Here!" off the surface; the Rune of Honesty hint (town 8,6) works.

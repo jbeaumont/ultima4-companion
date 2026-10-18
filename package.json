@@ -16,7 +16,8 @@
     "icon": "tsx scripts/make-icon.ts",
     "pack": "npm run build && electron-builder --win --dir",
     "dist": "npm run build && electron-builder --win",
-    "postinstall": "node node_modules/electron/install.js"
+    "postinstall": "node node_modules/electron/install.js",
+    "dev:test": "node scripts/dev-test.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

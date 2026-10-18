@@ -25,6 +25,15 @@ const api = {
   setLiveMemory: (on: boolean): Promise<GameState | null> => ipcRenderer.invoke(IPC.setLiveMemory, on),
   setEditorEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setEditorEnabled, on),
   setSageEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setSageEnabled, on),
+  launchGame: (): Promise<{ ok: true; profile: string } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.launchGame),
+  getDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogGet),
+  resetDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogReset),
+  onDungeonFog: (cb: (bits: Uint8Array) => void): (() => void) => {
+    const handler = (_e: unknown, bits: Uint8Array) => cb(bits)
+    ipcRenderer.on(IPC.dungeonFogChanged, handler)
+    return () => ipcRenderer.removeListener(IPC.dungeonFogChanged, handler)
+  },
+  seedTestSaves: (from: 'real' | 'empty'): Promise<{ ok: true } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.seedTestSaves, from),
   listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),
   takeSnapshot: (label?: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsTake, label),
   restoreSnapshot: (id: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsRestore, id),

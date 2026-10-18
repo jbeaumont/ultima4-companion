@@ -63,7 +63,7 @@ export class SaveFileSource implements StateSource {
   private onState: (s: GameState) => void = () => {}
   private last: GameState | null = null
 
-  constructor(private readonly gameDir: string | null) {
+  constructor(private readonly gameDir: string | null, private readonly overlayDir?: string) {
     // first state arrives from refresh()
   }
 
@@ -72,8 +72,8 @@ export class SaveFileSource implements StateSource {
     this.stopped = false
     void this.refresh()
     if (!this.gameDir) return
-    const saves = [cloudSavePath(this.gameDir), rootSavePath(this.gameDir)]
-    const dirs = [join(this.gameDir, 'cloud_saves')]
+    const saves = [cloudSavePath(this.gameDir, this.overlayDir), rootSavePath(this.gameDir)]
+    const dirs = [this.overlayDir ?? join(this.gameDir, 'cloud_saves')]
     this.watcher = chokidar.watch([...saves, ...dirs], {
       ignoreInitial: true,
       depth: 0
@@ -106,7 +106,7 @@ export class SaveFileSource implements StateSource {
   }
 
   private async refresh(attempt = 0): Promise<void> {
-    const savePath = pickSavePath(this.gameDir, existsSync)
+    const savePath = pickSavePath(this.gameDir, existsSync, this.overlayDir)
     const state = await readState(this.gameDir, savePath, async (p) => {
       await stat(p)
       return new Uint8Array(await readFile(p))

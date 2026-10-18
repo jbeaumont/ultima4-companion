@@ -18,9 +18,15 @@ export function App() {
   const [view, setView] = useState<View>('Tracker')
   const [state, setState] = useGameState()
   const [sageOn, setSageOn] = useState(false)
+  const [testMode, setTestMode] = useState(false)
+  const [launching, setLaunching] = useState(false)
+  const [launchMsg, setLaunchMsg] = useState<{ ok: boolean; text: string } | null>(null)
   useEffect(() => {
     const refresh = (): void => {
-      window.u4.getSettings().then((s) => setSageOn(s.sageEnabled), () => undefined)
+      window.u4.getSettings().then((s) => {
+        setSageOn(s.sageEnabled)
+        setTestMode(s.testMode)
+      }, () => undefined)
     }
     refresh()
     window.addEventListener('u4-settings-changed', refresh)
@@ -30,16 +36,36 @@ export function App() {
     if (!sageOn && view === 'Sage') setView('Settings')
   }, [sageOn, view])
 
+  useEffect(() => {
+    if (!launchMsg) return
+    const t = setTimeout(() => setLaunchMsg(null), 6000)
+    return () => clearTimeout(t)
+  }, [launchMsg])
+
+  const launch = (): void => {
+    setLaunching(true)
+    setLaunchMsg(null)
+    window.u4.launchGame().then(
+      (r) => setLaunchMsg(r.ok ? { ok: true, text: 'Game launched.' } : { ok: false, text: r.message }),
+      () => setLaunchMsg({ ok: false, text: 'Could not launch the game.' })
+    ).finally(() => setLaunching(false))
+  }
+
   return (
     <div className="app">
       <nav className="sidebar">
         <h1>Ultima IV</h1>
+        {testMode && <div className="test-badge">TEST INSTANCE</div>}
         {VIEWS.filter((v) => v !== 'Sage' || sageOn).map((v) => (
           <button key={v} className={v === view ? 'active' : ''} onClick={() => setView(v)}>
             {v}
           </button>
         ))}
-        <button className="hud-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
+        <button className="hud-btn play-btn" disabled={launching} onClick={launch}>
+          {testMode ? 'Launch test game (turbo)' : 'Play Ultima IV'}
+        </button>
+        {launchMsg && <p className={`result small ${launchMsg.ok ? 'ok' : 'error'}`}>{launchMsg.text}</p>}
+        <button className="hud-btn pop-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
       </nav>
       <main className="content">
         {/* stays mounted so the transcript survives view switches (main keeps the conversation) */}

@@ -10,6 +10,8 @@ export interface GameState {
   savePath: string | null
   updatedAt: number | null
   party: PartySave | null
+  /** Live mode only: moves made since the last save (null when it can't be compared). */
+  unsavedMoves?: number | null
 }
 
 export interface Settings {
@@ -33,6 +35,8 @@ export interface SettingsInfo {
   attachedPid: number | null
   editorEnabled: boolean
   sageEnabled: boolean
+  /** This is a --test instance: isolated data, test saves, turbo launch profile. */
+  testMode: boolean
 }
 
 /** A producer of GameState: save-file watcher, memory reader, or both (HybridSource). */
@@ -49,6 +53,8 @@ export const IPC = {
   setLiveMemory: 'settings:liveMemory',
   setEditorEnabled: 'settings:editorEnabled',
   setSageEnabled: 'settings:sageEnabled',
+  launchGame: 'launcher:launch',
+  seedTestSaves: 'launcher:seedTest',
   snapshotsList: 'snapshots:list',
   snapshotsTake: 'snapshots:take',
   snapshotsRestore: 'snapshots:restore',
@@ -74,6 +80,9 @@ export const IPC = {
   exploredGet: 'explored:get',
   exploredChanged: 'explored:changed',
   exploredReset: 'explored:reset',
+  dungeonFogGet: 'dungeonFog:get',
+  dungeonFogChanged: 'dungeonFog:changed',
+  dungeonFogReset: 'dungeonFog:reset',
   hudToggle: 'hud:toggle'
 } as const
 
