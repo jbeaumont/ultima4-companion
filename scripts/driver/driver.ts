@@ -372,6 +372,14 @@ export class GameDriver {
     return this.ds(DS.dungeonMap + s.dungeonLevel * DNG_SIZE * DNG_SIZE, DNG_SIZE * DNG_SIZE)
   }
 
+  /** People and creatures on the current town map (D_8742._npc, U4.H struct tNPC). */
+  npcs(): { slot: number; tile: number; x: number; y: number; talk: number }[] {
+    const n = this.ds(DS.dungeonMap + 0x400, 0x100)
+    const out: { slot: number; tile: number; x: number; y: number; talk: number }[] = []
+    for (let i = 0; i < 32; i++) if (n[0x60 + i]) out.push({ slot: i, tile: n[0x60 + i]!, x: n[0x20 + i]!, y: n[0x40 + i]!, talk: n[0xe0 + i]! })
+    return out
+  }
+
   /** Raw cell under the party. */
   dungeonCell(): number {
     const s = this.state()
