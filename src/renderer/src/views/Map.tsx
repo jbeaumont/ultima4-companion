@@ -4,7 +4,8 @@ import { cellStyle, isRoomCell, roomIndex } from '@domain/dungeonGlyphs'
 import { FOG_SIZE, exploredPercent, isExplored } from '@domain/fog'
 import { MOONGATES, gateState } from '@domain/moongates'
 import { tileName } from '@domain/tiles'
-import { DUNGEON_LEVELS, DUNGEON_SIZE, ROOM_SIZE, decodeDungeonCell, parseDng } from '@parsers/dungeon'
+import { altarRoomLabel, arrowAngle, liveMonsters, orbLabel, stoneAltarAt } from '@domain/dungeonInfo'
+import { DUNGEON_LEVELS, DUNGEON_SIZE, ROOM_SIZE, decodeDungeonCell, parseDng, parseDngMapSav } from '@parsers/dungeon'
 import type { Dungeon } from '@parsers/dungeon'
 import type { PartySave } from '@parsers/party'
 import { parseTlk } from '@parsers/talk'
@@ -19,6 +20,7 @@ import { buildAtlas, drawGrid, drawTile } from '../canvas/tiles'
 import type { TileAtlas } from '../canvas/tiles'
 import { tilePx, tileToScreen, visibleRange } from '../canvas/viewport'
 import { useExplored } from '../useExplored'
+import { useJournal } from '../useJournal'
 
 const AVATAR_TILE = 31
 const FOG_KEY = 'u4.fog'
@@ -218,13 +220,40 @@ function RoomView({ dungeon, room, base }: { dungeon: Dungeon; room: number; bas
   )
 }
 
-function DungeonMap(props: { base: Base; id: number; dungeon: Dungeon; level: number; onLevel: (l: number) => void; party: PartySave | null }) {
-  const { base, id, dungeon, level, onLevel, party } = props
+function DungeonMap(props: {
+  base: Base; id: number; dungeon: Dungeon; level: number; onLevel: (l: number) => void; party: PartySave | null; stamp: unknown
+}) {
+  const { base, id, dungeon, level, onLevel, party, stamp } = props
+  const { journal } = useJournal()
+  const spoilers = journal?.spoilerLevel === 'full'
+  const [liveOn, setLiveOn] = useState(true)
+  const [saved, setSaved] = useState<Uint8Array[] | null>(null)
   const [room, setRoom] = useState<number | null>(null)
   const [hover, setHover] = useState<string>('')
   useEffect(() => setRoom(null), [id, level])
   const here = party && party.location === id ? party : null
   const cells = dungeon.levels[level]!
+  const inDungeon = !!here
+  // live monsters come from DNGMAP.SAV, re-read whenever the game state changes
+  useEffect(() => {
+    if (!inDungeon || !liveOn) {
+      setSaved(null)
+      return
+    }
+    let live = true
+    window.u4.getDngMap().then((b) => {
+      if (!live) return
+      try {
+        setSaved(b ? parseDngMapSav(b) : null)
+      } catch {
+        setSaved(null)
+      }
+    }, () => live && setSaved(null))
+    return () => {
+      live = false
+    }
+  }, [inDungeon, liveOn, stamp])
+  const monsters = saved && liveOn ? liveMonsters(saved[level]!, decodeDungeonCell) : null
   return (
     <div className="dungeon">
       <div className="levels">
@@ -234,6 +263,12 @@ function DungeonMap(props: { base: Base; id: number; dungeon: Dungeon; level: nu
           </button>
         ))}
       </div>
+      {inDungeon && (
+        <label className="check">
+          <input type="checkbox" checked={liveOn} onChange={(e) => setLiveOn(e.target.checked)} /> Live monsters
+          {liveOn && !saved && <span className="muted small">(no DNGMAP.SAV found)</span>}
+        </label>
+      )}
       <div className="dungeon-body">
         <div>
           <div className="dgrid">
@@ -245,16 +280,26 @@ function DungeonMap(props: { base: Base; id: number; dungeon: Dungeon; level: nu
               const isParty = !!here && here.dungeonLevel === level && here.x === x && here.y === y
               const clickable = isRoomCell(cell)
               const roomNo = clickable ? roomIndex(cell, level, id) : -1
+              const altar = altarRoomLabel(id, level, x, y, cell)
+              const stone = spoilers ? stoneAltarAt(id, level, x, y) : null
+              const mon = monsters?.get(i)
+              const tip = [`${x}, ${y} — ${st.label}`, cell.feature === 'orb' ? orbLabel(id) : null, altar, stone && `${stone.stone} altar`, mon && `Live: ${mon}`]
+                .filter(Boolean).join(' · ')
               return (
                 <div
                   key={i}
                   className={`dcell${isParty ? ' party' : ''}${clickable ? ' room' : ''}${clickable && room === roomNo ? ' sel' : ''}`}
                   style={{ background: st.bg, color: st.color }}
-                  title={`${x}, ${y} — ${st.label}`}
-                  onMouseEnter={() => setHover(`${x}, ${y} — ${st.label}`)}
+                  title={tip}
+                  onMouseEnter={() => setHover(tip)}
                   onClick={clickable ? () => setRoom(roomNo) : undefined}
                 >
-                  {isParty ? <span className="pmark">@</span> : st.glyph}
+                  {isParty
+                    ? <span className="parrow" style={{ transform: `rotate(${arrowAngle(here.orientation)}deg)` }}>▲</span>
+                    : st.glyph}
+                  {stone && <span className="stone" title={`${stone.stone} altar`}>◆</span>}
+                  {altar && <span className="altar-tag">{altar}</span>}
+                  {mon && <span className="mon" title={mon}>{mon.charAt(0)}</span>}
                 </div>
               )
             })}
@@ -380,7 +425,7 @@ export function MapView({ state }: { state: GameState | null }) {
     if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} fog={fogOn ? explored : null} />
     else if (p.kind === 'settlement') {
       body = <SettlementMap base={base.value} id={sel} floors={p.floors} convs={p.convs} floor={floor} party={party} center={centerSeq} />
-    } else body = <DungeonMap base={base.value} id={sel} dungeon={p.dungeon} level={level} onLevel={(l) => { setFollow(false); setLevel(l) }} party={party} />
+    } else body = <DungeonMap base={base.value} id={sel} dungeon={p.dungeon} level={level} onLevel={(l) => { setFollow(false); setLevel(l) }} party={party} stamp={state} />
   }
 
   return (

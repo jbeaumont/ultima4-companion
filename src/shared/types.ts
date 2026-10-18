@@ -54,6 +54,8 @@ export const IPC = {
   editorApply: 'editor:apply',
   assetsBase: 'assets:base',
   assetsLocation: 'assets:location',
+  assetsImage: 'assets:image',
+  assetsDngmap: 'assets:dngmap',
   journalGet: 'journal:get',
   journalSave: 'journal:save',
   journalChanged: 'journal:changed',

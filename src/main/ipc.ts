@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { LOCATIONS } from '@domain/constants'
+import { LZW_IMAGES, RLE_IMAGES } from '@parsers/egaImage'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
@@ -99,6 +100,31 @@ export async function setupIpc(): Promise<void> {
     } catch {
       return null
     }
+  })
+
+  // read-only; only whitelisted image names ever reach the filesystem
+  const imageNames = new Set<string>([...RLE_IMAGES, ...LZW_IMAGES])
+  ipcMain.handle(IPC.assetsImage, async (_e, name: unknown): Promise<Uint8Array | null> => {
+    if (!gameDir || typeof name !== 'string' || !imageNames.has(name)) return null
+    try {
+      return new Uint8Array(await readFile(join(gameDir, name)))
+    } catch {
+      return null
+    }
+  })
+
+  // live dungeon working copy: the cloud_saves overlay wins, as with PARTY.SAV
+  ipcMain.handle(IPC.assetsDngmap, async (): Promise<Uint8Array | null> => {
+    if (!gameDir) return null
+    for (const p of [join(gameDir, 'cloud_saves', 'DNGMAP.SAV'), join(gameDir, 'DNGMAP.SAV')]) {
+      if (!existsSync(p)) continue
+      try {
+        return new Uint8Array(await readFile(p))
+      } catch {
+        return null
+      }
+    }
+    return null
   })
 
   ipcMain.handle(IPC.exploredGet, (): Uint8Array => getExplored())

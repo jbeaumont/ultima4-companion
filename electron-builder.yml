@@ -1,0 +1,24 @@
+appId: com.jbeaumont.ultima4companion
+productName: Ultima IV Companion
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+# koffi loads its native .node binaries from disk, which is impossible from inside the asar
+asarUnpack:
+  - node_modules/koffi/**
+npmRebuild: false
+icon: build/icon.png
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: build/icon.png
+  # unsigned is fine for personal use
+  forceCodeSigning: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
