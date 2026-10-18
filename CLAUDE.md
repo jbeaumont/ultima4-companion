@@ -31,6 +31,14 @@ Full roadmap: see the "Milestones" section of README.md.
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
 - Play-test only in a test instance; never kill a DOSBox the player launched without asking
 
+## Working with others
+Several people and their agents work on this repo; the full workflow is in CONTRIBUTING.md.
+- Branch from `main` as `<handle>/<topic>`, one topic per PR, PRs target `main` (stacked PRs merge into their parent branch, not `main`). Never push to `main`.
+- Claim an issue before starting; open one for new work.
+- Before a PR: `npm run typecheck`, `npm test`, and the hill-climb journey for anything the companion shows. Say in the PR what you could not verify.
+- Install paths differ: use `U4_DIR`, never hard-code a personal path. Tests that need the install must skip without it (and must not read it at collection time).
+- One play-test per machine at a time: the driver takes window focus and the test companion is always on port 9241.
+
 ## Play-testing (computer use)
 A test instance can never touch the player's saves or companion data.
 - `npm run dev:test` starts the companion in test mode (env `U4C_TEST=1`; `--test` also works when Electron is started directly): its own userData (`%APPDATA%\ultima4-companion-test`), so journal, fog, snapshots and settings are separate. The game it launches uses the test save overlay `game-saves\` inside that folder.

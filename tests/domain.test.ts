@@ -83,7 +83,8 @@ describe('progress', () => {
 })
 
 describe.skipIf(!hasGame)('places vs WORLD.MAP (real install)', () => {
-  const world = parseWorldMap(gameFile('WORLD.MAP'))
+  // the block body still runs when skipped, so only read the install when it exists
+  const world = hasGame ? parseWorldMap(gameFile('WORLD.MAP')) : new Uint8Array(0)
   const at = (x: number, y: number) => world[y * WORLD_SIZE + x]!
 
   it('every entrance sits on a matching terrain tile', () => {
