@@ -9,7 +9,7 @@ import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@share
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
 import { getDungeonFog, getExplored, loadDungeonFog, loadExplored, resetDungeonFog, resetExplored, trackExplored } from './explored'
 import { toggleHud } from './hud'
-import { loadJournal, recordJournalVisit, saveJournal } from './journal'
+import { loadJournal, recordJournalMet, recordJournalVisit, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
 import { setupSavesIpc } from './saves/savesIpc'
 import { setupSageIpc } from './sage/sageIpc'
@@ -37,13 +37,19 @@ const send = (channel: string, payload: unknown): void => {
   }
 }
 
-// settlement visits are recorded here so they count even when the Dialogue view is closed
+// settlement visits and conversations are recorded here so they count even when the Dialogue view is closed
+let lastTalk: GameState['lastTalk'] = null // a new object for each new conversation, even after the reader restarts
 const onState = (state: GameState): void => {
   send(IPC.stateChanged, state)
   trackExplored(state.party)
   const loc = state.party?.location
   if (loc === undefined || loc < 1 || loc > 16) return
   recordJournalVisit(loc).then((j) => j && send(IPC.journalChanged, j), () => undefined)
+  const talk = state.lastTalk
+  if (talk && talk !== lastTalk) {
+    lastTalk = talk
+    recordJournalMet(loc, talk.name).then((j) => j && send(IPC.journalChanged, j), () => undefined)
+  }
 }
 
 async function startSource(): Promise<void> {

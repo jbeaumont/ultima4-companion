@@ -2,7 +2,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { recordVisit } from '@domain/hints'
-import { emptyJournal, mergeVisited, normalizeJournal, parseJournal } from '@shared/journal'
+import { emptyJournal, mergeMet, mergeVisited, metKey, normalizeJournal, parseJournal } from '@shared/journal'
 import type { Journal } from '@shared/journal'
 
 // Lives in userData, never in the (read-only) game folder.
@@ -38,7 +38,7 @@ export function saveJournal(raw: unknown): Promise<Journal> {
   const incoming = normalizeJournal(raw)
   return enqueue(async () => {
     current ??= await loadJournal()
-    return write({ ...incoming, visited: mergeVisited(current.visited, incoming.visited) })
+    return write({ ...incoming, visited: mergeVisited(current.visited, incoming.visited), met: mergeMet(current.met, incoming.met) })
   })
 }
 
@@ -49,5 +49,15 @@ export function recordJournalVisit(location: number): Promise<Journal | null> {
     const visited = recordVisit(current.visited, location)
     if (visited.length === current.visited.length) return null
     return write({ ...current, visited })
+  })
+}
+
+/** Record someone the party talked to; resolves to the updated journal, or null when already known. */
+export function recordJournalMet(location: number, name: string): Promise<Journal | null> {
+  return enqueue(async () => {
+    current ??= await loadJournal()
+    const met = mergeMet(current.met, [metKey(location, name)])
+    if (met.length === current.met.length) return null
+    return write({ ...current, met })
   })
 }

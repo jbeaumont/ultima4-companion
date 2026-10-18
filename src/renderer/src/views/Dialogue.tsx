@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { metKey } from '@shared/journal'
 import type { Conversation } from '@parsers/talk'
 import { LOCATIONS } from '@domain/constants'
 import { HINTS, dialogueUnlocked } from '@domain/hints'
@@ -128,6 +129,8 @@ export function Dialogue({ state }: { state: GameState | null }) {
   const here = state?.party?.location ?? 0
   const visited = journal?.visited ?? []
   const mode = journal?.dialogueMode ?? 'visited'
+  const met = new Set(journal?.met ?? [])
+  const talked = (t: Town, n: Npc): boolean => met.has(metKey(t.locationId, flat(n.name)))
   const unlocked = (id: number): boolean => dialogueUnlocked(id, mode, visited)
 
   const hits = useMemo(() => search(query, TOWNS.filter((t) => dialogueUnlocked(t.locationId, mode, visited))), [query, mode, visited])
@@ -200,6 +203,9 @@ export function Dialogue({ state }: { state: GameState | null }) {
               >
                 <span>{t.location}{t.locationId === here && <span className="here"> ● you are here</span>}</span>
                 {!ok && <span className="muted small">Not visited yet</span>}
+                {ok && t.npcs.some((n) => talked(t, n)) && (
+                  <span className="muted small">Talked to {t.npcs.filter((n) => talked(t, n)).length} of {t.npcs.length}</span>
+                )}
               </button>
             )
           })}
@@ -222,6 +228,7 @@ export function Dialogue({ state }: { state: GameState | null }) {
                       <div className="card-head">
                         <b>{flat(n.name)}</b>
                         {lead(town, n) && <span className="lead" title="Gives a clue for a hint topic">★ quest lead</span>}
+                        {talked(town, n) && <span className="talked" title="You have talked to this person">✓ talked</span>}
                       </div>
                       <div className="muted small">{flat(n.description)}</div>
                       <div className="small">{flat(n.job)}</div>

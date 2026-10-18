@@ -3,11 +3,15 @@
 // the block stops looking valid (DOSBox restarted, game quit to the title, ...).
 import { BATTLE_DS, isBattleMode, parseBattle } from '@parsers/battle'
 import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
+import { parseTlk } from '@parsers/talk'
+import { flat } from '@domain/talkSim'
 import type { GameState } from '@shared/types'
 import { findPartyBlocks, looksLikeParty, pickLive } from './scan'
 import { ProcessReader, dosboxProcesses, memorySupported } from './win32'
 
 const POLL_MS = 250
+const TALK_DS = 0x95ce // D_95CE: the TLK record of the person last talked to (U4_TALK.C C_A4B4)
+const TALK_SIZE = 0x120
 const RESCAN_MS = 3000
 const CHUNK = 4 << 20
 const OVERLAP = PARTY_SAV_SIZE
@@ -22,6 +26,9 @@ export class MemorySource {
   private address = 0n
   private timer: NodeJS.Timeout | null = null
   private last: Uint8Array | null = null
+  /** The conversation record last seen, and how many new conversations since attaching. */
+  private talk: Uint8Array | null = null
+  private lastTalk: { name: string; serial: number } | null = null
   /** Each monster slot's tile and HP when first seen in the current battle. */
   private battleStart = new Map<number, { tile: number; hp: number }>()
   private stopped = true
@@ -68,6 +75,7 @@ export class MemorySource {
     this.reader?.close()
     this.reader = null
     this.last = null
+    this.talk = null
     if (was && !this.stopped) this.onState(null)
   }
 
@@ -83,12 +91,29 @@ export class MemorySource {
       return this.schedule(RESCAN_MS)
     }
     const battle = this.readBattle()
-    const snapshot = battle ? concat(bytes, battle) : bytes
+    this.readTalk()
+    const snapshot = concat(bytes, battle ?? new Uint8Array(0), Uint8Array.of(this.lastTalk?.serial ?? 0))
     if (!this.last || !sameBytes(snapshot, this.last)) {
       this.last = snapshot
       this.emit(bytes, battle)
     }
     this.schedule(POLL_MS)
+  }
+
+  /**
+   * Notice a new conversation: the game loads the NPC's record into D_95CE when
+   * talking starts. The first value after attaching is only a baseline (it may be
+   * left over from earlier, even another town).
+   */
+  private readTalk(): void {
+    const t = this.reader?.read(this.address - BigInt(BATTLE_DS.party) + BigInt(TALK_DS), TALK_SIZE)
+    if (!t) return
+    if (this.talk && !sameBytes(t, this.talk) && t.some((b) => b !== 0)) {
+      const raw = parseTlk(t)[0]?.name
+      const name = raw ? flat(raw) : ''
+      if (name) this.lastTalk = { name, serial: (this.lastTalk?.serial ?? 0) + 1 }
+    }
+    this.talk = t
   }
 
   /** The game's mode and, during a battle, its Combat and Fighters globals (null when not fighting). */
@@ -117,7 +142,7 @@ export class MemorySource {
     } else {
       this.battleStart.clear()
     }
-    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes), battle: parsed })
+    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes), battle: parsed, lastTalk: this.lastTalk })
   }
 
   private async attach(): Promise<void> {

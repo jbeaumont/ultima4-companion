@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { emptyJournal, mergeVisited } from '@shared/journal'
+import { emptyJournal, mergeMet, mergeVisited } from '@shared/journal'
 import type { Journal } from '@shared/journal'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -32,16 +32,22 @@ function update(next: Journal | ((j: Journal) => Journal), delay = 0): void {
   timer = setTimeout(flush, delay)
 }
 
+const fromMain = (mine: Journal, main: Journal): Journal => ({
+  ...mine,
+  visited: mergeVisited(mine.visited, main.visited),
+  met: mergeMet(mine.met, main.met)
+})
+
 function start(): void {
   if (started) return
   started = true
   window.u4.getJournal().then(
-    (j) => set({ journal: snap.journal ? { ...snap.journal, visited: mergeVisited(snap.journal.visited, j.visited) } : j }),
+    (j) => set({ journal: snap.journal ? fromMain(snap.journal, j) : j }),
     () => set({ journal: snap.journal ?? emptyJournal() })
   )
-  // main owns `visited`; take only that from its pushes so in-progress notes are never overwritten
+  // main owns `visited` and `met`; take only those from its pushes so in-progress notes are never overwritten
   window.u4.onJournal((j) => {
-    if (snap.journal) set({ journal: { ...snap.journal, visited: mergeVisited(snap.journal.visited, j.visited) } })
+    if (snap.journal) set({ journal: fromMain(snap.journal, j) })
   })
   window.addEventListener('pagehide', () => timer && flush())
 }
