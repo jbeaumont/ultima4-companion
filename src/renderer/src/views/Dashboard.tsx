@@ -1,7 +1,7 @@
 import type { PartySave } from '@parsers/party'
 import { CLASSES, ITEM_FLAGS, LOCATIONS, STATUS, STONES, VIRTUES } from '@domain/constants'
 import type { ItemName } from '@domain/constants'
-import { COMPANIONS, STATUS_TEXT, companionStatus } from '@domain/companions'
+import { COMPANIONS, STATUS_TEXT, companionStatus, joinReadiness } from '@domain/companions'
 import { cooldowns } from '@domain/cooldowns'
 import { HINTS, suggestedTopics, visibleTiers } from '@domain/hints'
 import type { SpoilerLevel } from '@domain/hints'
@@ -177,7 +177,14 @@ function Timers({ p }: { p: PartySave }) {
   )
 }
 
-function Companions({ p, art }: { p: PartySave; art: DashboardArt | null }) {
+/** Card line for a companion not yet in the party; the town is shown unless hints are off. */
+function joinText(r: ReturnType<typeof joinReadiness>, towns: boolean): string | null {
+  if (r.kind === 'ready') return towns ? `Can join now · in ${r.town}` : 'Can join now'
+  if (r.kind === 'needs') return `Needs ${r.reasons.join(' and ')}`
+  return null
+}
+
+function Companions({ p, art, towns }: { p: PartySave; art: DashboardArt | null; towns: boolean }) {
   const avatarClass = p.allRecords[0]?.classIndex ?? -1
   return (
     <section className="panel d-companions">
@@ -198,7 +205,7 @@ function Companions({ p, art }: { p: PartySave; art: DashboardArt | null }) {
               )}
               <div className="d-cn">{c.name}</div>
               <div className="d-cc">{CLASSES[c.classIndex]}</div>
-              <div className="d-cs">{STATUS_TEXT[st]}</div>
+              <div className="d-cs">{joinText(joinReadiness(c, p), towns) ?? STATUS_TEXT[st]}</div>
             </div>
           )
         })}
@@ -233,7 +240,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
         <Next p={p} nudges={nudges} onOpen={() => onNavigate('Hints')} />
         <Timers p={p} />
       </aside>
-      <Companions p={p} art={art} />
+      <Companions p={p} art={art} towns={nudges} />
     </div>
   )
 }
