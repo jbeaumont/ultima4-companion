@@ -198,3 +198,22 @@ a.btn { text-decoration: none; display: inline-block; }
 .dcell .stone { position: absolute; left: 2px; top: 0; font-size: 12px; }
 .dcell .altar-tag { position: absolute; left: 1px; bottom: 1px; right: 1px; font-size: 9px; line-height: 10px; text-align: center; color: #ffe9a8; background: rgba(0,0,0,.6); border-radius: 2px; }
 .parrow { display: inline-block; color: #ffe146; font-size: 26px; line-height: 1; }
+.sage { display: flex; flex-direction: column; gap: 10px; }
+.sage-head .toolbar { gap: 16px; }
+.linklike { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+.sage-list { display: flex; flex-direction: column; gap: 10px; min-height: 240px; max-height: 55vh; overflow-y: auto; background: #0b0b14; border: 1px solid #26263d; border-radius: 8px; padding: 12px; }
+.sage-empty { margin: auto; text-align: center; }
+.sage-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip { background: #2a2540; color: var(--accent); border: 1px solid var(--accent); border-radius: 14px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.chip:hover { background: #352f52; }
+.chip:disabled { opacity: .45; cursor: default; }
+.sage-msg { white-space: pre-wrap; line-height: 1.45; padding: 8px 12px; border-radius: 8px; max-width: 85%; overflow-wrap: anywhere; }
+.sage-msg.user { align-self: flex-end; background: #2a2540; }
+.sage-msg.sage { align-self: flex-start; background: var(--panel); }
+.sage-msg.system { align-self: center; text-align: center; background: none; }
+.sage-who { margin-bottom: 2px; }
+.sage-input { display: flex; gap: 8px; align-items: stretch; }
+.sage-input textarea { flex: 1; resize: vertical; background: #0b0b14; color: var(--text); border: 1px solid #26263d; border-radius: 6px; padding: 8px; font: inherit; font-size: 14px; }
+.sage-actions { display: flex; flex-direction: column; gap: 6px; }
+.key-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.key-row input { flex: 1; min-width: 200px; background: #0b0b14; color: var(--text); border: 1px solid #26263d; border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; }

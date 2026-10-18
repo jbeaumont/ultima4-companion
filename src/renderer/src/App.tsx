@@ -6,11 +6,12 @@ import { Gallery } from './views/Gallery'
 import { Hints } from './views/Hints'
 import { JournalView } from './views/Journal'
 import { MapView } from './views/Map'
+import { Sage } from './views/Sage'
 import { Settings } from './views/Settings'
 import { Snapshots } from './views/Snapshots'
 import { Tracker } from './views/Tracker'
 
-const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Dialogue', 'Gallery', 'Snapshots', 'Editor', 'Settings'] as const
+const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Sage', 'Dialogue', 'Gallery', 'Snapshots', 'Editor', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
@@ -29,6 +30,10 @@ export function App() {
         <button className="hud-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
       </nav>
       <main className="content">
+        {/* stays mounted so the transcript survives view switches (main keeps the conversation) */}
+        <div style={{ display: view === 'Sage' ? undefined : 'none' }}>
+          <Sage onNavigate={setView} />
+        </div>
         {view === 'Tracker' ? (
           <Tracker state={state} />
         ) : view === 'Map' ? (
@@ -37,7 +42,7 @@ export function App() {
           <JournalView state={state} />
         ) : view === 'Hints' ? (
           <Hints state={state} />
-        ) : view === 'Dialogue' ? (
+        ) : view === 'Sage' ? null : view === 'Dialogue' ? (
           <Dialogue state={state} />
         ) : view === 'Gallery' ? (
           <Gallery state={state} />

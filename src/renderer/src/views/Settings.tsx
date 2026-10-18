@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { GameState, SettingsInfo } from '@shared/types'
+import type { SageStatus } from '../../../main/sage/sageIpc'
 
 interface Props {
   state: GameState | null
@@ -42,6 +43,39 @@ export function Settings({ state, onState }: Props) {
       setInfo(await window.u4.getSettings())
     } finally {
       setBusy(false)
+    }
+  }
+
+  const [sage, setSage] = useState<SageStatus | null>(null)
+  const [keyInput, setKeyInput] = useState('')
+  const [keyError, setKeyError] = useState<string | null>(null)
+  const refreshSage = (): void => {
+    window.u4.sageStatus().then(setSage, () => undefined)
+  }
+  useEffect(refreshSage, [])
+
+  const saveKey = async () => {
+    const k = keyInput
+    setKeyInput('') // the key lives in this input only until it is sent
+    setKeyError(null)
+    setBusy(true)
+    try {
+      await window.u4.sageSetKey(k)
+    } catch (err) {
+      setKeyError(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '') : 'Could not save the key')
+    } finally {
+      setBusy(false)
+      refreshSage()
+    }
+  }
+
+  const removeKey = async () => {
+    setBusy(true)
+    try {
+      await window.u4.sageClearKey()
+    } finally {
+      setBusy(false)
+      refreshSage()
     }
   }
 
@@ -89,6 +123,29 @@ export function Settings({ state, onState }: Props) {
         <p className="note">
           This lets the Editor change your real save. A backup is always taken first, and DOSBox must be closed.
         </p>
+      </section>
+      <section className="panel settings">
+        <h3>AI sage</h3>
+        <p className={sage && (sage.hasStoredKey || sage.envKey) ? 'ok' : 'muted'}>
+          {!sage
+            ? 'Checking…'
+            : sage.hasStoredKey
+              ? 'Using a key saved in this app (encrypted with Windows secure storage)'
+              : sage.envKey
+                ? 'Using ANTHROPIC_API_KEY from the environment'
+                : 'No key found: add one below, set ANTHROPIC_API_KEY, or run `ant auth login`'}
+        </p>
+        <div className="key-row">
+          <input
+            type="password" value={keyInput} placeholder="Anthropic API key" autoComplete="off" spellCheck={false}
+            onChange={(e) => setKeyInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && keyInput.trim() && !busy) void saveKey() }}
+          />
+          <button className="btn" disabled={busy || !keyInput.trim()} onClick={saveKey}>Save</button>
+          {sage?.hasStoredKey && <button className="btn" disabled={busy} onClick={removeKey}>Remove saved key</button>}
+        </div>
+        {keyError && <p className="result error">{keyError}</p>}
+        <p className="muted small">Your key never leaves this computer except in requests to Anthropic.</p>
       </section>
     </>
   )

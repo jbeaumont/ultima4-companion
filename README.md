@@ -21,7 +21,7 @@ The app expects the GOG install at `C:\Program Files\GOG Galaxy\Games\Ultima 4`.
 7. ✅ Live DOSBox memory mode, fog-of-war, compact HUD
 8. ✅ Save snapshots → editor/cheats
 9. ✅ Art gallery, dungeon tools, installer
-10. AI sage
+10. ✅ AI sage (needs an Anthropic API key: Settings, ANTHROPIC_API_KEY, or `ant auth login`)
 
 ## Credits
 File formats are from the [xu4](https://github.com/xu4-engine/u4) project's `FileFormats.md`. Game logic reference: [u4-decompiled](https://github.com/ergonomy-joe/u4-decompiled).

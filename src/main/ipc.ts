@@ -12,6 +12,7 @@ import { toggleHud } from './hud'
 import { loadJournal, recordJournalVisit, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
 import { setupSavesIpc } from './saves/savesIpc'
+import { setupSageIpc } from './sage/sageIpc'
 import { SnapshotStore } from './saves/snapshots'
 import { loadSettings, saveSettings } from './store'
 
@@ -134,6 +135,7 @@ export async function setupIpc(): Promise<void> {
   ipcMain.handle(IPC.journalGet, () => loadJournal())
   ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
 
+  setupSageIpc(join(app.getPath('userData'), 'sage-key.bin'), () => source?.getState() ?? null, send)
   autoSnapshot = setupSavesIpc(new SnapshotStore(join(app.getPath('userData'), 'snapshots')), () => gameDir, send).autoSnapshot
 
   await loadExplored((bits) => send(IPC.exploredChanged, bits))

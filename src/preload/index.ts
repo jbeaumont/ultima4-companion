@@ -2,9 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { PartySave } from '@parsers/party'
 import type { SavesResult } from '../main/saves/savesIpc'
 import type { SnapshotMeta } from '../main/saves/snapshots'
+import type { Persona } from '../main/sage/prompt'
+import type { SageStatus } from '../main/sage/sageIpc'
+
 import { IPC } from '@shared/types'
 import type { Journal } from '@shared/journal'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
+
+export type SageDone = { id: string } & ({ ok: true; stopReason: string | null; servedBy: string } | { ok: false; message: string })
 
 // Typed bridge to the main process; the renderer has no other access.
 const api = {
@@ -30,6 +35,22 @@ const api = {
   },
   loadEditor: (): Promise<SavesResult<{ party: PartySave; path: string; gameRunning: boolean }>> => ipcRenderer.invoke(IPC.editorLoad),
   applyEdit: (party: PartySave): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.editorApply, party),
+  sageStatus: (): Promise<SageStatus> => ipcRenderer.invoke(IPC.sageStatus),
+  sageAsk: (question: string, persona: Persona): Promise<string> => ipcRenderer.invoke(IPC.sageAsk, question, persona),
+  sageCancel: (): Promise<void> => ipcRenderer.invoke(IPC.sageCancel),
+  sageReset: (): Promise<void> => ipcRenderer.invoke(IPC.sageReset),
+  sageSetKey: (key: string): Promise<void> => ipcRenderer.invoke(IPC.sageSetKey, key),
+  sageClearKey: (): Promise<void> => ipcRenderer.invoke(IPC.sageClearKey),
+  onSageDelta: (cb: (e: { id: string; text: string }) => void): (() => void) => {
+    const handler = (_e: unknown, payload: { id: string; text: string }) => cb(payload)
+    ipcRenderer.on(IPC.sageDelta, handler)
+    return () => ipcRenderer.removeListener(IPC.sageDelta, handler)
+  },
+  onSageDone: (cb: (e: SageDone) => void): (() => void) => {
+    const handler = (_e: unknown, payload: SageDone) => cb(payload)
+    ipcRenderer.on(IPC.sageDone, handler)
+    return () => ipcRenderer.removeListener(IPC.sageDone, handler)
+  },
   getBaseAssets: (): Promise<BaseAssets | null> => ipcRenderer.invoke(IPC.assetsBase),
   getLocationAssets: (id: number): Promise<LocationAssets | null> => ipcRenderer.invoke(IPC.assetsLocation, id),
   getImage: (name: string): Promise<Uint8Array | null> => ipcRenderer.invoke(IPC.assetsImage, name),
