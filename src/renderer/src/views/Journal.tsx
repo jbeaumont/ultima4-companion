@@ -87,7 +87,7 @@ function Timers({ p, live }: { p: PartySave; live: boolean }) {
   return (
     <Section title="Timers">
       {row('Camp', c.camp)}
-      {row('Meditation', c.meditation)}
+      {row('Meditation / Hawkwind', c.meditation)}
       {row('Virtue conversation', c.virtue)}
       {row('Mandrake / Nightshade', c.reagent.canSearch ? { ready: true, movesLeft: 0 } : c.reagent, (
         <span className="muted small">

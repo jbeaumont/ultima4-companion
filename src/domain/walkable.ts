@@ -24,6 +24,10 @@ const COST: Record<number, number> = {
   60: 1, // chest
   62: 1, // brick floor
   63: 1, // wood floor
+  // fields are walkable but harmful (in the game's own list, U4_MAP.C D_0904; energy fields are not)
+  68: 15, // poison field
+  70: 15, // fire field
+  71: 15, // sleep field
   74: 1 // altar
 }
 

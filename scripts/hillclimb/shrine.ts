@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   log(`on the shrine at ${s.x},${s.y}, moves ${s.moves}, Spirituality ${s.karma[SPIRITUALITY]}`)
 
   const a = await capture('1-before', ['Dashboard', 'Journal', 'Hints'])
-  expect(/Meditation\s*ready/i.test(a['Dashboard']!), 'Dashboard timer says meditation is ready')
+  expect(/Meditation( \/ Hawkwind)?\s*ready/i.test(a['Dashboard']!), 'Dashboard timer says meditation is ready')
   expect(/Mantra of Honesty/i.test(a['Hints']!), 'Hints offer the Mantra of Honesty')
 
   // enter and meditate
@@ -105,7 +105,7 @@ async function main(): Promise<void> {
 
   expect(s.karma[SPIRITUALITY] === Math.min(99, spirit0 + 9), 'three cycles with the right mantra add 9 Spirituality')
   expect(new RegExp(`${s.karma[SPIRITUALITY]}\\s*/\\s*99`).test(b['Dashboard']!), 'Dashboard shows the new Spirituality')
-  expect(/Meditation\s*in \d+ moves/i.test(b['Dashboard']!), 'Dashboard meditation timer is running again')
+  expect(/Meditation( \/ Hawkwind)?\s*in \d+ moves/i.test(b['Dashboard']!), 'Dashboard meditation timer is running again')
   expect(!/Shrine/i.test(mid['Dashboard']!) || /Shrine of Honesty/i.test(mid['Dashboard']!), 'Dashboard names the shrine while inside')
 
   writeFileSync(join(OUT, 'findings.txt'), findings.join('\n'))
