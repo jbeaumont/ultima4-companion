@@ -11,6 +11,7 @@ import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import { timerLabel } from '@shared/format'
 import type { GameState } from '@shared/types'
+import { BattlePanel } from '../components/BattlePanel'
 import { useDashboardArt } from '../useDashboardArt'
 import type { DashboardArt } from '../useDashboardArt'
 import { useJournal } from '../useJournal'
@@ -191,6 +192,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
   return (
     <div className="dash">
       <Hero state={state!} p={p} art={art} />
+      {state?.battle && <BattlePanel battle={state.battle} party={p} />}
       <VirtueCards p={p} art={art} />
       <aside className="d-right">
         <Quest p={p} />

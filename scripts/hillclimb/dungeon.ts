@@ -77,7 +77,13 @@ async function main(): Promise<void> {
   if (!d.inBattle()) throw new Error(`no battle started (mode ${d.mode()})`)
   const b0 = d.battle()
   log(`battle (mode ${b0.mode}): ${b0.monsters.length} monsters, party at ${b0.view.party.filter(Boolean).map((p) => `${p!.x},${p!.y}`).join(' ')}`)
+  await c.until('window.u4.getState().then((s) => s && s.battle && s.battle.monsters.length > 0)', 5000)
+  const live = await c.state<{ battle?: { monsters: { name: string; hp: number }[] } | null }>()
+  log(`companion sees: ${live.battle ? live.battle.monsters.map((m) => `${m.name} ${m.hp}`).join(', ') : 'no battle'}`)
+  if ((live.battle?.monsters.length ?? 0) !== b0.monsters.length) throw new Error('companion battle view does not match the game')
   await capture('2-battle') // the game waits for a command, so the battle holds still
+  await d.fightBattle({ exitToward: 'right', maxTurns: 14 }) // a few rounds in, some foes hurt
+  await capture('2b-midbattle')
   const r = await d.fightBattle({ exitToward: 'right' }) // onward, toward the ladder
   for (const line of r.log) log(`  ${line}`)
   s = d.state()
@@ -92,6 +98,7 @@ async function main(): Promise<void> {
   s = await d.ladder('down')
   log(`descended: ${where(s)}`)
   await new Promise((res) => setTimeout(res, 1000))
+  if ((await c.state<{ battle?: unknown }>()).battle) throw new Error('battle view still shown after the battle')
   await capture('3-level2')
   const ok = s.location === DESPISE && s.dungeonLevel === 1
   log(ok ? 'PASS: fought a room battle and reached level 2' : `FAIL: ${where(s)}`)

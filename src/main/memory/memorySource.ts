@@ -1,6 +1,7 @@
 // Live game state read from DOSBox's emulated RAM (read-only). Attaches to
 // dosbox.exe, finds the party block once, then polls it. Detaches and rescans if
 // the block stops looking valid (DOSBox restarted, game quit to the title, ...).
+import { BATTLE_DS, isBattleMode, parseBattle } from '@parsers/battle'
 import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import type { GameState } from '@shared/types'
 import { findPartyBlocks, looksLikeParty, pickLive } from './scan'
@@ -21,6 +22,8 @@ export class MemorySource {
   private address = 0n
   private timer: NodeJS.Timeout | null = null
   private last: Uint8Array | null = null
+  /** Each monster slot's tile and HP when first seen in the current battle. */
+  private battleStart = new Map<number, { tile: number; hp: number }>()
   private stopped = true
   private onState: (s: GameState | null) => void = () => {}
 
@@ -79,15 +82,42 @@ export class MemorySource {
       this.detach()
       return this.schedule(RESCAN_MS)
     }
-    if (!this.last || !sameBytes(bytes, this.last)) {
-      this.last = bytes
-      this.emit(bytes)
+    const battle = this.readBattle()
+    const snapshot = battle ? concat(bytes, battle) : bytes
+    if (!this.last || !sameBytes(snapshot, this.last)) {
+      this.last = snapshot
+      this.emit(bytes, battle)
     }
     this.schedule(POLL_MS)
   }
 
-  private emit(bytes: Uint8Array): void {
-    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes) })
+  /** The game's mode and, during a battle, its Combat and Fighters globals (null when not fighting). */
+  private readBattle(): Uint8Array | null {
+    const at = (off: number) => this.address - BigInt(BATTLE_DS.party) + BigInt(off)
+    const mode = this.reader?.read(at(BATTLE_DS.curMode), 2)
+    if (!mode || !isBattleMode(mode[0]! | (mode[1]! << 8))) return null
+    const combat = this.reader?.read(at(BATTLE_DS.combat), BATTLE_DS.combatSize)
+    const fighters = this.reader?.read(at(BATTLE_DS.fighters), BATTLE_DS.fightersSize)
+    const active = this.reader?.read(at(BATTLE_DS.activeChara), 2)
+    if (!combat || !fighters || !active) return null
+    return concat(mode, combat, fighters, active)
+  }
+
+  private emit(bytes: Uint8Array, battle: Uint8Array | null): void {
+    let parsed = null
+    if (battle) {
+      const c = BATTLE_DS.combatSize
+      const f = BATTLE_DS.fightersSize
+      parsed = parseBattle(battle[0]! | (battle[1]! << 8), battle.subarray(2, 2 + c), battle.subarray(2 + c, 2 + c + f), battle[2 + c + f]!)
+      for (const m of parsed.monsters) {
+        const seen = this.battleStart.get(m.slot)
+        if (!seen || seen.tile !== m.tile) this.battleStart.set(m.slot, { tile: m.tile, hp: m.hp })
+        m.startHp = Math.max(this.battleStart.get(m.slot)!.hp, m.hp)
+      }
+    } else {
+      this.battleStart.clear()
+    }
+    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes), battle: parsed })
   }
 
   private async attach(): Promise<void> {
@@ -122,6 +152,16 @@ export function scanProcess(reader: ProcessReader, names: string[]): { address: 
     }
   }
   return pickLive(blocks)
+}
+
+function concat(...parts: Uint8Array[]): Uint8Array {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
+  let o = 0
+  for (const p of parts) {
+    out.set(p, o)
+    o += p.length
+  }
+  return out
 }
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {

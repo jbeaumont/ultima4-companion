@@ -59,5 +59,6 @@ A test instance can never touch the player's saves or companion data.
 ### Hill-climbing the companion
 `scripts/hillclimb/` runs a journey with the driver and, at each checkpoint, captures what the test companion shows (view text + screenshots via CDP, `companion.ts` starts `npm run dev:test` if needed), then checks expectations. Review the captures, fix gaps, rerun.
 - `npx tsx scripts/hillclimb/first-rune.ts <outDir>`: outside Moonglow, inside, and after finding the Rune of Honesty (Dashboard, Map, Journal, Hints, Dialogue). About 25 s.
-- `npx tsx scripts/hillclimb/dungeon.ts <outDir>`: Despise on entry, mid room battle, and on level 2 (Dashboard, Map). About 30 s.
+- `npx tsx scripts/hillclimb/dungeon.ts <outDir>`: Despise on entry, at the start and middle of the room battle, and on level 2 (Dashboard, Map); asserts the companion's battle view matches the game and clears afterwards. About 35 s.
+- Live battle view: in memory mode `GameState.battle` (`src/parsers/battle.ts`, shared with the driver) carries the combat map, monsters (name, HP, HP when first seen) and party positions; `BattlePanel` shows it on the Dashboard and above the Map. After changing main-process code, restart the test companion: it does not reload main on its own.
 - Write captures to the session scratchpad, not the repo. A freshly started companion can lag a few seconds before going live; the journeys wait for it.
