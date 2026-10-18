@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { BATTLE_SIZE, woundText } from '@parsers/battle'
-import type { BattleMonster, BattleState } from '@parsers/battle'
+import { BATTLE_SIZE, firstHp, foeState } from '@parsers/battle'
+import type { BattleState } from '@parsers/battle'
 import type { PartySave } from '@parsers/party'
 import { buildAtlas, drawTile } from '../canvas/tiles'
 import type { TileAtlas } from '../canvas/tiles'
@@ -25,8 +25,6 @@ function useAtlas(): TileAtlas | null {
 export function BattlePanel({ battle, party }: { battle: BattleState; party: PartySave }) {
   const atlas = useAtlas()
   const ref = useRef<HTMLCanvasElement>(null)
-  // monsters start with random HP, so measure each against the HP it had when first seen
-  const startHp = (m: BattleMonster): number => Math.max(m.startHp ?? 0, m.hp)
 
   useEffect(() => {
     const ctx = ref.current?.getContext('2d')
@@ -64,12 +62,12 @@ export function BattlePanel({ battle, party }: { battle: BattleState; party: Par
           <p className="muted small">{advice}</p>
           <ul className="battle-list">
             {monsters.map((m) => {
-              const full = startHp(m)
+              const full = firstHp(m)
               return (
                 <li key={m.slot}>
                   <span className="b-name">{m.name}</span>
                   <span className="b-bar"><span style={{ width: `${full ? Math.min(100, (m.hp / full) * 100) : 0}%` }} /></span>
-                  <span className="b-hp">{m.hp} · {m.hp < full ? woundText(m.hp, m.maxHp) : 'Unhurt'}</span>
+                  <span className="b-hp">{m.hp} · {foeState(m)}</span>
                 </li>
               )
             })}

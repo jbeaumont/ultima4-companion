@@ -18,6 +18,7 @@ const GAME = process.env['U4_DIR'] ?? 'C:\\Program Files\\GOG Galaxy\\Games\\Ult
 const TEST_DATA = join(process.env['APPDATA']!, 'ultima4-companion-test')
 const OVERLAY = join(TEST_DATA, 'game-saves')
 const DESPISE = 18
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const t0 = Date.now()
 const log = (m: string) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${m}`)
 const hp = (s: PartySave) => s.members.map((m) => `${m.name} ${m.hp}/${m.hpMax} ${m.status}`).join(', ')
@@ -84,6 +85,14 @@ async function main(): Promise<void> {
   await capture('2-battle') // the game waits for a command, so the battle holds still
   await d.fightBattle({ exitToward: 'right', maxTurns: 14 }) // a few rounds in, some foes hurt
   await capture('2b-midbattle')
+  const hud = await c.hud()
+  await sleep(800)
+  const hudText = await hud.text()
+  writeFileSync(join(OUT, '2b-midbattle-HUD.txt'), hudText)
+  await hud.shot(join(OUT, '2b-midbattle-HUD.png'))
+  log(`HUD: ${hudText.replace(/\s+/g, ' ').slice(0, 160)}`)
+  if (!/⚔/.test(hudText) || !/Headless|Mimic/.test(hudText)) throw new Error('the HUD does not show the battle')
+  hud.close()
   const r = await d.fightBattle({ exitToward: 'right' }) // onward, toward the ladder
   for (const line of r.log) log(`  ${line}`)
   s = d.state()

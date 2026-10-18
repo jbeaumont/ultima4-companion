@@ -297,3 +297,9 @@ a.btn { text-decoration: none; display: inline-block; }
 .b-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #8a2a2a, #e0604a); }
 .b-bar.mine > span { background: linear-gradient(90deg, #2f7a4f, #5fdc8f); }
 .b-hp { color: var(--muted); font-size: 12px; }
+
+/* HUD during a battle */
+.hud-battle { font-weight: 700; color: #ff8f7a; }
+.hud-foes { display: flex; flex-direction: column; gap: 3px; }
+.hud-foe { display: grid; grid-template-columns: minmax(0, 64px) 1fr; gap: 6px; align-items: center; }
+.fill.foe { background: linear-gradient(90deg, #8a2a2a, #e0604a); }
