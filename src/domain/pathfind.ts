@@ -17,6 +17,8 @@ export interface RouteOptions {
   blocked?: Set<string>
   /** Extra cost per step, keeps routes compact on open ground. */
   stepPenalty?: number
+  /** Override the on-foot step cost (null = impassable); `isGoal` is true for the destination cell. */
+  cost?: (tile: number, isGoal: boolean) => number | null
 }
 
 const key = (x: number, y: number) => `${x},${y}`
@@ -46,9 +48,8 @@ export function findRoute(grid: Grid, sx: number, sy: number, tx: number, ty: nu
       const nk = key(n[0], n[1])
       if (opts.blocked?.has(nk)) continue
       const tile = grid.tileAt(n[0], n[1])
-      const c = stepCost(tile)
+      const c = opts.cost ? opts.cost(tile, nk === goal) : DESTINATION_ONLY.has(tile) && nk !== goal ? null : stepCost(tile)
       if (c === null) continue
-      if (DESTINATION_ONLY.has(tile) && nk !== goal) continue
       const nd = d + c + (opts.stepPenalty ?? 0)
       if (nd < (dist.get(nk) ?? Infinity)) {
         dist.set(nk, nd)
