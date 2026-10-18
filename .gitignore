@@ -1,0 +1,22 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+.vite/
+coverage/
+
+# Raw Ultima IV game files never belong in the repo (derived data in data/ is fine)
+*.SAV
+*.sav
+*.MAP
+*.ULT
+*.TLK
+*.DNG
+*.EGA
+*.EGZ
+*.PIC
+*.CON
+*.EXE
+*.COM
+PARTY.NEW
