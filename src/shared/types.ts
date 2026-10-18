@@ -15,6 +15,8 @@ export interface GameState {
   unsavedMoves?: number | null
   /** Live mode only: the battle in progress, if any. */
   battle?: BattleState | null
+  /** Live mode only: the last person talked to since attaching (from the game's current-conversation record). */
+  lastTalk?: { name: string; serial: number } | null
 }
 
 export interface Settings {

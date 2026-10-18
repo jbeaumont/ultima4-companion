@@ -15,6 +15,8 @@ export interface Journal {
   clues: Clue[]
   /** Settlement ids (1-16) the party has entered, sorted. Written by main as the save changes. */
   visited: number[]
+  /** People talked to, as "<location id>|<name>", sorted. Written by main from live memory. */
+  met: string[]
   /** Hint topic id -> tiers revealed (0-3). */
   revealed: Record<string, number>
   spoilerLevel: SpoilerLevel
@@ -26,7 +28,7 @@ export const MAX_CLUES = 2000
 const MAX_FIELD = 2000
 
 export const emptyJournal = (): Journal => ({
-  notes: '', clues: [], visited: [], revealed: {}, spoilerLevel: 'nudges', dialogueMode: 'visited'
+  notes: '', clues: [], visited: [], met: [], revealed: {}, spoilerLevel: 'nudges', dialogueMode: 'visited'
 })
 
 const TOPIC_IDS = new Set(HINTS.map((h) => h.id))
@@ -38,6 +40,20 @@ function normalizeVisited(v: unknown): number[] {
   const ids = v.filter((n): n is number => Number.isInteger(n) && n >= 1 && n <= 16)
   return [...new Set(ids)].sort((a, b) => a - b)
 }
+
+export const MAX_MET = 1000
+
+function normalizeMet(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  const keys = v.filter((k): k is string => typeof k === 'string' && /^\d{1,2}\|.{1,40}$/.test(k))
+  return [...new Set(keys)].sort().slice(0, MAX_MET)
+}
+
+/** Key for a person talked to. */
+export const metKey = (location: number, name: string): string => `${location}|${name}`
+
+/** Union of two met lists (main records them; a stale renderer copy must never drop one). */
+export const mergeMet = (a: readonly string[], b: readonly string[]): string[] => normalizeMet([...a, ...b])
 
 function normalizeRevealed(v: unknown): Record<string, number> {
   const out: Record<string, number> = {}
@@ -86,6 +102,7 @@ export function normalizeJournal(raw: unknown): Journal {
     notes: str(r.notes, MAX_NOTES) ?? '',
     clues,
     visited: normalizeVisited(r.visited),
+    met: normalizeMet(r.met),
     revealed: normalizeRevealed(r.revealed),
     spoilerLevel: LEVELS.find((l) => l === r.spoilerLevel) ?? 'nudges',
     dialogueMode: MODES.find((m) => m === r.dialogueMode) ?? 'visited'

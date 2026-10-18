@@ -31,7 +31,7 @@ describe('journal normalize', () => {
       clues: [{ id: 'a', text: 'ok', extra: 'x', createdAt: 1 }, { id: 'b', text: '   ' }, null, 7, { id: 'c' }]
     })
     expect(j).toEqual({ ...emptyJournal(), notes: 'n', clues: [{ id: 'a', text: 'ok', createdAt: 1 }] })
-    expect(Object.keys(j).sort()).toEqual(['clues', 'dialogueMode', 'notes', 'revealed', 'spoilerLevel', 'visited'])
+    expect(Object.keys(j).sort()).toEqual(['clues', 'dialogueMode', 'met', 'notes', 'revealed', 'spoilerLevel', 'visited'])
   })
 
   it('makes duplicate ids unique and clamps sizes', () => {
@@ -52,7 +52,7 @@ describe('journal hint and dialogue state', () => {
     const old = JSON.stringify({ notes: 'old', clues: [{ id: 'a', text: 'x', createdAt: 1 }] })
     expect(parseJournal(old)).toEqual({
       notes: 'old', clues: [{ id: 'a', text: 'x', createdAt: 1 }],
-      visited: [], revealed: {}, spoilerLevel: 'nudges', dialogueMode: 'visited'
+      visited: [], met: [], revealed: {}, spoilerLevel: 'nudges', dialogueMode: 'visited'
     })
   })
 
@@ -90,5 +90,14 @@ describe('format helpers', () => {
 
   it('clue ids differ', () => {
     expect(newClueId(1000, 0.1)).not.toBe(newClueId(1000, 0.2))
+  })
+})
+
+describe('people met', () => {
+  it('keeps valid, unique, sorted keys and merges without dropping any', async () => {
+    const { normalizeJournal, mergeMet, metKey } = await import('@shared/journal')
+    const j = normalizeJournal({ met: ['6|Iolo', '5|Mariah', '6|Iolo', 'bad', 7, '99999|x'] })
+    expect(j.met).toEqual(['5|Mariah', '6|Iolo'])
+    expect(mergeMet(['6|Iolo'], [metKey(5, 'Cromwell')])).toEqual(['5|Cromwell', '6|Iolo'])
   })
 })

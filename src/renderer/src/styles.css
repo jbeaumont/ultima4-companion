@@ -313,3 +313,4 @@ a.btn { text-decoration: none; display: inline-block; }
 .d-band { font-size: 11px; color: var(--muted); margin-top: 4px; }
 .d-band.b3 { color: #c9b26a; }
 .d-band.b4 { color: var(--accent); font-weight: 600; }
+.talked { font-size: 11px; color: #5fdc8f; margin-left: 6px; }

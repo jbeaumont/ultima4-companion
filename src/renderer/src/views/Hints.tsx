@@ -4,6 +4,8 @@ import type { HintCategory, HintTopic, SpoilerLevel } from '@domain/hints'
 import { progress } from '@domain/progress'
 import type { Progress } from '@domain/progress'
 import { flat } from '@domain/talkSim'
+import { LOCATIONS } from '@domain/constants'
+import { metKey } from '@shared/journal'
 import type { GameState } from '@shared/types'
 import { useJournal } from '../useJournal'
 
@@ -29,11 +31,15 @@ interface CardProps {
   topic: HintTopic
   level: SpoilerLevel
   revealed: number
+  /** People talked to (journal keys). */
+  met: Set<string>
   solved: boolean
   onReveal: (n: number) => void
 }
 
-function TopicCard({ topic, level, revealed, solved, onReveal }: CardProps) {
+const locationId = (name: string): number => Number(Object.entries(LOCATIONS).find(([, l]) => l.name === name)?.[0] ?? 0)
+
+function TopicCard({ topic, level, revealed, solved, onReveal, met }: CardProps) {
   const tiers = visibleTiers(topic, level, revealed)
   const sources = topic.sources ?? []
   return (
@@ -49,7 +55,7 @@ function TopicCard({ topic, level, revealed, solved, onReveal }: CardProps) {
       ))}
       {tiers.length >= 2 && sources.length > 0 && (
         <div className="small muted">
-          Who to ask: {sources.map((s) => `${flat(s.npc)} (${s.location})`).join(', ')}
+          Who to ask: {sources.map((s) => `${flat(s.npc)} (${s.location})${met.has(metKey(locationId(s.location), flat(s.npc))) ? ' ✓ talked' : ''}`).join(', ')}
         </div>
       )}
       <div className="hint-actions">
@@ -72,13 +78,14 @@ export function Hints({ state }: { state: GameState | null }) {
   const level = journal.spoilerLevel
   const pr: Progress | null = party ? progress(party) : null
   const here = party?.location ?? 0
+  const met = new Set(journal.met)
   const setReveal = (id: string, n: number): void => update((j) => ({ ...j, revealed: { ...j.revealed, [id]: n } }))
   const solvedOf = (t: HintTopic): boolean => isSolved(t, pr)
   const suggested = suggestedTopics(pr, here).slice(0, 5)
 
   const card = (t: HintTopic) => (
     <TopicCard
-      key={t.id} topic={t} level={level} revealed={journal.revealed[t.id] ?? 0}
+      key={t.id} topic={t} level={level} revealed={journal.revealed[t.id] ?? 0} met={met}
       solved={solvedOf(t)} onReveal={(n) => setReveal(t.id, n)}
     />
   )

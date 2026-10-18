@@ -96,7 +96,10 @@ async function main(): Promise<void> {
   await sleep(1500)
   log(`party: ${s.members.map((m) => `${m.name} ${m.hp}/${m.hpMax}`).join(', ')}`)
 
-  const b = await capture('2-after', ['Dashboard', 'Tracker'])
+  const met = await c.eval<string[]>('window.u4.getJournal().then((j) => j.met)')
+  expect(met.includes('6|Iolo'), `the journal records talking to Iolo in Britain (met: ${met.join(', ') || 'none'})`)
+  const b = await capture('2-after', ['Dashboard', 'Tracker', 'Dialogue'])
+  expect(/Iolo[^]*?✓ talked/.test(b['Dialogue']!.slice(b['Dialogue']!.indexOf('BRITAIN'))), 'Dialogue marks Iolo as talked to')
   expect(/In your party/.test(card(b['Dashboard']!, 'Iolo')), "Iolo's card says Iolo is in the party")
   expect(/Iolo/.test(b['Tracker']!), 'Tracker lists Iolo')
 
