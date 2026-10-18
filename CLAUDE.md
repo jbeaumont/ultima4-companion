@@ -39,4 +39,12 @@ A test instance can never touch the player's saves or companion data.
 - At turbo speed keystrokes need no waits, so batch whole walks in one computer_batch. Title menu: any key, then `J` (Journey Onward). Arrows move; `E` enters a town or dungeon; `S` searches; `Q` saves (surface only).
 - Inspect: `node scripts/cdp.mjs 9241 state` (position, location, unsaved moves, visited, snapshots); `... view Map`; `... shot out.png`; `... hud out.png`. Keep screenshots in the session scratchpad, not the repo.
 - Set up later-game states quickly with the guarded Editor in the test instance (DOSBox must be closed to write).
+
+### Scripted play (preferred: no computer use)
+`scripts/driver/` drives the turbo test DOSBox headlessly: keys go in by posting window messages, and every step is checked against live memory (the party block). A scenario is just a script:
+- `npx tsx scripts/driver/scenarios/moonglow-rune.ts`: prepares a test save, launches, walks to Moonglow, enters, path-finds to 8,6, searches, and asserts the Rune of Honesty bit. Runs in about 5 s.
+- `GameDriver` API: `attach`, `journeyOnward`, `state()`, `press(key)` (waits until the turn is processed), `walkTo(x, y)` (Dijkstra over the current world or town map using `src/domain/walkable.ts` costs from xu4's tile rules; re-routes around NPCs that block), `enter()`, `search()`.
+- SDL 1.2 only reads keys while DOSBox is the foreground window, so the driver brings it forward with one real click (cursor restored). The test profile sets `autolock=false` so that click can't capture the mouse. Expect DOSBox to take focus while a scenario runs.
+- DOSBox recreates its window when it switches video mode, so look windows up by process each time (`findDosboxWindow`), never cache the handle.
+- Not supported yet: dungeons (no 3D movement), combat, conversations (typed keywords; the game draws text as graphics).
 - Confirmed live: in towns x,y are town coordinates and out_x/out_y the surface return point; DOSBox restarts are reattached automatically; Quit & Save answers "Not Here!" off the surface; the Rune of Honesty hint (town 8,6) works.
