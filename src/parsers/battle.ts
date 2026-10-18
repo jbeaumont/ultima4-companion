@@ -47,6 +47,12 @@ export function monsterInfo(tile: number): { name: string; maxHp: number } {
   return p ? { name: p[0], maxHp: p[1] } : { name: `Foe #${tile}`, maxHp: 255 }
 }
 
+/** HP a monster had when first seen (monsters start with random HP), the yardstick for its health bar. */
+export const firstHp = (m: BattleMonster): number => Math.max(m.startHp ?? 0, m.hp)
+
+/** Short state of a monster: "Unhurt" until hit, then the game's wording. */
+export const foeState = (m: BattleMonster): string => (m.hp < firstHp(m) ? woundText(m.hp, m.maxHp) : 'Unhurt')
+
 /** The game's own wording for a monster's state (COM_DoDamage). */
 export function woundText(hp: number, maxHp: number): string {
   const half = maxHp >> 1

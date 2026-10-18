@@ -1,5 +1,7 @@
 import { LOCATIONS, VIRTUES } from '@domain/constants'
 import { PHASE_NAMES } from '@domain/moongates'
+import { firstHp, foeState } from '@parsers/battle'
+import type { BattleState } from '@parsers/battle'
 import type { PartySave } from '@parsers/party'
 import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
@@ -18,6 +20,25 @@ const Moon = ({ label, phase }: { label: string; phase: number }) => (
   </span>
 )
 
+/** During a battle the side column lists the foes, weakest first. */
+function HudFoes({ battle }: { battle: BattleState }) {
+  const foes = [...battle.monsters].sort((a, b) => a.hp - b.hp)
+  if (!foes.length) return <div className="hud-foes muted">{battle.room ? 'Room clear: walk off one edge' : 'No foes left'}</div>
+  return (
+    <div className="hud-foes">
+      {foes.map((m) => (
+        <div key={m.slot} className="hud-foe" title={`${m.name}: ${m.hp} HP, ${foeState(m)}`}>
+          <span className="hud-name">{m.name}</span>
+          <div className="bar hud-bar">
+            <div className="fill foe" style={{ width: `${Math.min(100, (m.hp / firstHp(m)) * 100)}%` }} />
+            <span className="hud-hp">{m.hp}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** Compact always-on-top window: party HP, virtues and moons at a glance. */
 export function Hud() {
   const [state] = useGameState()
@@ -34,6 +55,7 @@ export function Hud() {
             {state.source === 'memory' ? 'LIVE' : 'Save'}
           </span>
         )}
+        {state?.battle && <span className="hud-battle" title="Battle in progress">⚔ {state.battle.monsters.length}</span>}
         {chip && <span className={`unsaved-chip compact ${chip.level}`} title={chip.hint}>Unsaved {state?.unsavedMoves}</span>}
         {saved && <span className="hud-saved" title="Nothing unsaved">Saved</span>}
         <button className="hud-close" title="Close HUD" onClick={() => void window.u4.toggleHud()}>×</button>
@@ -57,6 +79,7 @@ export function Hud() {
             })}
           </div>
           <div className="hud-side">
+            {state?.battle ? <HudFoes battle={state.battle} /> : (
             <div className="hud-virtues">
               {VIRTUES.map((v, i) => {
                 const k = p.karma[i] ?? 0
@@ -71,6 +94,7 @@ export function Hud() {
                 )
               })}
             </div>
+            )}
             <div className="hud-moons">
               <Moon label="Trammel" phase={p.trammel} />
               <Moon label="Felucca" phase={p.felucca} />
