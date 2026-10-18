@@ -84,6 +84,9 @@ async function main(): Promise<void> {
   log('meditating')
   const spirit0 = s.karma[SPIRITUALITY]!
   const mid = await capture('2-meditating', ['Dashboard'])
+  expect(/Meditating at the Shrine of Honesty/i.test(mid['Dashboard']!) && /type Honesty/i.test(mid['Dashboard']!), 'Dashboard explains how to meditate here')
+  const level = await c.eval<string>('window.u4.getJournal().then((j) => j.spoilerLevel)')
+  expect(level === 'full' || !/AHM/.test(mid['Dashboard']!), `the mantra stays hidden at spoiler level "${level}"`)
   for (let cycle = 1; cycle <= 3; cycle++) {
     await sleep(Math.max(0, mark + 18000 - Date.now())) // 16 one-second dots, plus margin
     await d.type('ahm')

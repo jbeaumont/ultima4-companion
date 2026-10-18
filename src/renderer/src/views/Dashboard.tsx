@@ -3,7 +3,9 @@ import { CLASSES, ITEM_FLAGS, LOCATIONS, STATUS, STONES, VIRTUES } from '@domain
 import type { ItemName } from '@domain/constants'
 import { COMPANIONS, STATUS_TEXT, companionStatus } from '@domain/companions'
 import { cooldowns } from '@domain/cooldowns'
-import { suggestedTopics } from '@domain/hints'
+import { HINTS, suggestedTopics, visibleTiers } from '@domain/hints'
+import type { SpoilerLevel } from '@domain/hints'
+import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { partyAlerts } from '@domain/partyCondition'
 import { progress } from '@domain/progress'
@@ -129,6 +131,37 @@ function Next({ p, nudges, onOpen }: { p: PartySave; nudges: boolean; onOpen: ()
   )
 }
 
+function ShrinePanel({ p, level, revealed, onOpen }: { p: PartySave; level: SpoilerLevel; revealed: Record<string, number>; onOpen: () => void }) {
+  const a = shrineAdvice(p)
+  if (!a) return null
+  const topic = HINTS.find((h) => h.id === `mantra-${a.virtue.toLowerCase()}`)
+  const known = topic ? visibleTiers(topic, level, revealed[topic.id] ?? 0) : []
+  const mantra = known.length === 3 ? known[2] : null
+  return (
+    <section className="panel d-shrine">
+      <h3>Meditating at the Shrine of {a.virtue}</h3>
+      {/* also true while a meditation is under way, so say it plainly rather than as a warning */}
+      {!a.rested && <p className="d-shrine-warn">One meditation per hundred moves: the next can begin in {a.movesLeft} moves.</p>}
+      <ol>
+        <li>When asked what you meditate upon, type <b>{a.virtue}</b>.</li>
+        <li>Choose <b>3</b> cycles{a.stage === 'elevate' ? ' (all three are needed for Avatarhood)' : ''}.</li>
+        <li>
+          After each count of dots, enter the mantra.{' '}
+          {mantra ?? (known.length ? <>Your hint so far: <i>{known[known.length - 1]}</i> </> : null)}
+          {!mantra && <button className="link" onClick={onOpen}>Open Hints</button>}
+        </li>
+      </ol>
+      <p className="muted small">
+        {a.stage === 'avatar'
+          ? `You are already a partial Avatar of ${a.virtue}; meditating still adds Spirituality and a vision.`
+          : a.stage === 'elevate'
+            ? `${a.virtue} is at 99: three good cycles now grant partial Avatarhood.`
+            : `Each good cycle adds 3 Spirituality. Avatarhood needs ${a.virtue} at 99 (now ${a.karma}); a wrong mantra costs 3 Spirituality.`}
+      </p>
+    </section>
+  )
+}
+
 function Timers({ p }: { p: PartySave }) {
   const c = cooldowns(p)
   const row = (name: string, t: { ready: boolean; movesLeft: number }) => (
@@ -192,6 +225,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
   return (
     <div className="dash">
       <Hero state={state!} p={p} art={art} />
+      <ShrinePanel p={p} level={journal?.spoilerLevel ?? 'off'} revealed={journal?.revealed ?? {}} onOpen={() => onNavigate('Hints')} />
       {state?.battle && <BattlePanel battle={state.battle} party={p} />}
       <VirtueCards p={p} art={art} />
       <aside className="d-right">
