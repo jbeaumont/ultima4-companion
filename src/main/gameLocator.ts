@@ -17,13 +17,13 @@ export function selectGameDir(candidates: (string | undefined | null)[], exists:
   return null
 }
 
-export const cloudSavePath = (gameDir: string): string => join(gameDir, 'cloud_saves', 'PARTY.SAV')
+export const cloudSavePath = (gameDir: string, overlayDir = join(gameDir, 'cloud_saves')): string => join(overlayDir, 'PARTY.SAV')
 export const rootSavePath = (gameDir: string): string => join(gameDir, 'PARTY.SAV')
 
-/** Prefer the DOSBox cloud_saves overlay, fall back to the pristine root copy. */
-export function pickSavePath(gameDir: string | null, exists: Exists): string | null {
+/** Prefer the DOSBox overlay (cloud_saves by default), fall back to the pristine root copy. */
+export function pickSavePath(gameDir: string | null, exists: Exists, overlayDir?: string): string | null {
   if (!gameDir) return null
-  if (exists(cloudSavePath(gameDir))) return cloudSavePath(gameDir)
+  if (exists(cloudSavePath(gameDir, overlayDir))) return cloudSavePath(gameDir, overlayDir)
   if (exists(rootSavePath(gameDir))) return rootSavePath(gameDir)
   return null
 }

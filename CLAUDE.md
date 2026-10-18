@@ -8,6 +8,8 @@ Full roadmap: see the "Milestones" section of README.md.
 - `npm test` — Vitest; tests in `tests/` against the real install are skipped when it is absent
 - `npm run typecheck` — TypeScript 7 (`tsc --noEmit`)
 - `npm run extract` — regenerate `data/` (tile atlas, dialogue JSON) from the install
+- `npm run dev:test` — a separate **test instance** (see Play-testing below), remote debugging on port 9241
+- `npm run dist` — Windows installer in `release/`
 
 ## Layout
 - `src/parsers/` — pure byte parsers for every game file; no Node/Electron imports so main and renderer can share them
@@ -27,3 +29,22 @@ Full roadmap: see the "Milestones" section of README.md.
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
+- Play-test only in a test instance; never kill a DOSBox the player launched without asking
+
+## Play-testing (computer use)
+A test instance can never touch the player's saves or companion data.
+- `npm run dev:test` starts the companion in test mode (env `U4C_TEST=1`; `--test` also works when Electron is started directly): its own userData (`%APPDATA%\ultima4-companion-test`), so journal, fog, snapshots and settings are separate. The game it launches uses the test save overlay `game-saves\` inside that folder.
+- Launch: sidebar "Launch test game (turbo)", or `node scripts/cdp.mjs 9241 eval "window.u4.launchGame()"`. The `test` profile runs DOSBox at `cycles=max`, windowed 960x600 at screen 0,0 (fixed, so computer-use coordinates are stable). Configs are generated into userData; the game folder is never modified.
+- Seed (DOSBox closed): `window.u4.seedTestSaves('real')` copies the player's current save in (read-only on the real save); `'empty'` gives a fresh folder for Initiate New Game.
+- At turbo speed keystrokes need no waits, so batch whole walks in one computer_batch. Title menu: any key, then `J` (Journey Onward). Arrows move; `E` enters a town or dungeon; `S` searches; `Q` saves (surface only).
+- Inspect: `node scripts/cdp.mjs 9241 state` (position, location, unsaved moves, visited, snapshots); `... view Map`; `... shot out.png`; `... hud out.png`. Keep screenshots in the session scratchpad, not the repo.
+- Set up later-game states quickly with the guarded Editor in the test instance (DOSBox must be closed to write).
+
+### Scripted play (preferred: no computer use)
+`scripts/driver/` drives the turbo test DOSBox headlessly: keys go in by posting window messages, and every step is checked against live memory (the party block). A scenario is just a script:
+- `npx tsx scripts/driver/scenarios/moonglow-rune.ts`: prepares a test save, launches, walks to Moonglow, enters, path-finds to 8,6, searches, and asserts the Rune of Honesty bit. Runs in about 5 s.
+- `GameDriver` API: `attach`, `journeyOnward`, `state()`, `press(key)` (waits until the turn is processed), `walkTo(x, y)` (Dijkstra over the current world or town map using `src/domain/walkable.ts` costs from xu4's tile rules; re-routes around NPCs that block), `enter()`, `search()`.
+- SDL 1.2 only reads keys while DOSBox is the foreground window, so the driver brings it forward with one real click (cursor restored). The test profile sets `autolock=false` so that click can't capture the mouse. Expect DOSBox to take focus while a scenario runs.
+- DOSBox recreates its window when it switches video mode, so look windows up by process each time (`findDosboxWindow`), never cache the handle.
+- Not supported yet: dungeons (no 3D movement), combat, conversations (typed keywords; the game draws text as graphics).
+- Confirmed live: in towns x,y are town coordinates and out_x/out_y the surface return point; DOSBox restarts are reattached automatically; Quit & Save answers "Not Here!" off the surface; the Rune of Honesty hint (town 8,6) works.

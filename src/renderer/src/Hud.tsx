@@ -1,6 +1,8 @@
 import { LOCATIONS, VIRTUES } from '@domain/constants'
 import { PHASE_NAMES } from '@domain/moongates'
 import type { PartySave } from '@parsers/party'
+import { canSaveHere } from '@domain/unsaved'
+import { unsavedChip } from '@domain/unsavedChip'
 import { useGameState } from './useGameState'
 
 const MOON_GLYPHS = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
@@ -21,6 +23,8 @@ export function Hud() {
   const [state] = useGameState()
   const p = state?.party ?? null
   const members = p ? (p.memberCount === 0 ? p.allRecords.slice(0, 1) : p.members) : []
+  const chip = p ? unsavedChip(state?.unsavedMoves, canSaveHere(p)) : null
+  const saved = !!p && state?.unsavedMoves === 0
   return (
     <div className="hud">
       <header className="hud-head">
@@ -30,6 +34,8 @@ export function Hud() {
             {state.source === 'memory' ? 'LIVE' : 'Save'}
           </span>
         )}
+        {chip && <span className={`unsaved-chip compact ${chip.level}`} title={chip.hint}>Unsaved {state?.unsavedMoves}</span>}
+        {saved && <span className="hud-saved" title="Nothing unsaved">Saved</span>}
         <button className="hud-close" title="Close HUD" onClick={() => void window.u4.toggleHud()}>×</button>
       </header>
       {p ? (

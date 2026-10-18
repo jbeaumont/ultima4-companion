@@ -5,6 +5,8 @@ import {
   describeTransport
 } from '@domain/constants'
 import type { ItemName } from '@domain/constants'
+import { canSaveHere } from '@domain/unsaved'
+import { unsavedChip } from '@domain/unsavedChip'
 import type { GameState } from '@shared/types'
 
 import { VirtueRow } from '../components/VirtueRow'
@@ -161,6 +163,7 @@ function StatusBar({ state }: { state: GameState | null }) {
     return () => clearInterval(t)
   }, [])
   const age = state?.updatedAt ? Math.max(0, Math.round((now - state.updatedAt) / 1000)) : null
+  const chip = state?.party ? unsavedChip(state.unsavedMoves, canSaveHere(state.party)) : null
   const msg = !state ? 'Loading…' : state.status === 'ok' ? null : state.message ?? state.status
   return (
     <div className={`statusbar ${state?.status ?? ''}`}>
@@ -170,6 +173,12 @@ function StatusBar({ state }: { state: GameState | null }) {
         </span>
       )}
       <span className="path">{state?.savePath ?? state?.gameDir ?? 'No save file'}</span>
+      {chip && (
+        <span className={`unsaved-chip ${chip.level}`}>
+          {chip.text}
+          <span className="unsaved-hint"> · {chip.hint.split(' · ')[1]}</span>
+        </span>
+      )}
       {age !== null && <span>updated {age} s ago</span>}
       {msg && <span className="msg">{msg}</span>}
     </div>

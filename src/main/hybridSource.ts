@@ -1,6 +1,7 @@
 // Combines the save-file watcher (always on) with the live memory reader
 // (optional). Live memory wins while attached; otherwise the latest save is shown.
 import type { GameState, StateSource } from '@shared/types'
+import { unsavedMoves } from '@domain/unsaved'
 import { MemorySource } from './memory/memorySource'
 import { SaveFileSource } from './saveFileSource'
 
@@ -12,8 +13,8 @@ export class HybridSource implements StateSource {
   private onState: (s: GameState) => void = () => {}
 
   /** @param onFile called with every save-file state, even while live memory is shown (used for snapshots) */
-  constructor(gameDir: string | null, liveMemory: boolean, private readonly onFile?: (s: GameState) => void) {
-    this.file = new SaveFileSource(gameDir)
+  constructor(gameDir: string | null, liveMemory: boolean, private readonly onFile?: (s: GameState) => void, overlayDir?: string) {
+    this.file = new SaveFileSource(gameDir, overlayDir)
     this.memory = liveMemory
       ? new MemorySource(
           () => (this.fileState?.party ? this.fileState.party.allRecords.slice(0, this.fileState.party.memberCount || 1).map((r) => r.name) : []),
@@ -27,11 +28,14 @@ export class HybridSource implements StateSource {
     this.file.start((s) => {
       this.fileState = s
       this.onFile?.(s)
-      if (!this.memState) onState(s)
+      if (!this.memState) return onState(s)
+      // a new save changes how much live progress is unsaved
+      this.memState = { ...this.memState, unsavedMoves: unsavedMoves(this.memState.party, s.party) }
+      onState(this.memState)
     })
     this.memory?.start((s) => {
-      this.memState = s
-      const current = s ?? this.fileState
+      this.memState = s ? { ...s, unsavedMoves: unsavedMoves(s.party, this.fileState?.party ?? null) } : null
+      const current = this.memState ?? this.fileState
       if (current) onState(current)
     })
   }

@@ -13,6 +13,8 @@ import type { GameState } from '@shared/types'
 import { findPids } from '../memory/win32'
 import { loadSettings, saveSettings } from '../store'
 import { WriteRefused, writeSaveFiles } from './safeWrite'
+import { existsSync } from 'node:fs'
+import type { SaveLocation } from '../saveLocation'
 import { SnapshotStore, effectiveSavePaths } from './snapshots'
 import type { SnapshotMeta } from './snapshots'
 
@@ -44,10 +46,20 @@ const fail = (err: unknown): SavesResult<never> => ({
   message: err instanceof WriteRefused ? err.message : `Failed: ${err instanceof Error ? err.message : String(err)}`
 })
 
-export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | null, send: (channel: string, payload: unknown) => void): {
+export interface SavesContext {
+  loc: SaveLocation | null
+  /** Real and test saves keep separate snapshot stores. */
+  store: SnapshotStore
+  testRoot: string
+}
+
+export function setupSavesIpc(ctx: () => SavesContext, send: (channel: string, payload: unknown) => void): {
   autoSnapshot: (state: GameState) => void
 } {
-  const changed = async () => send(IPC.snapshotsChanged, await store.list())
+  const changed = async () => send(IPC.snapshotsChanged, await ctx().store.list())
+  const getGameDir = () => ctx().loc?.gameDir ?? null
+  const overlay = () => ctx().loc?.overlayDir
+  const deps = () => ({ isGameRunning, snapshots: ctx().store, testRoot: ctx().testRoot })
 
   // one auto snapshot at a time; identical saves are skipped by the store
   let chain: Promise<unknown> = Promise.resolve()
@@ -55,17 +67,17 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
     const dir = getGameDir()
     if (state.status !== 'ok' || !dir) return
     chain = chain.then(async () => {
-      if (await store.take(dir, 'auto')) await changed()
+      if (await ctx().store.take(dir, 'auto', undefined, new Date(), overlay())) await changed()
     }).catch(() => undefined)
   }
 
-  ipcMain.handle(IPC.snapshotsList, () => store.list())
+  ipcMain.handle(IPC.snapshotsList, () => ctx().store.list())
 
   ipcMain.handle(IPC.snapshotsTake, async (_e, label: unknown): Promise<SavesResult<SnapshotMeta | null>> => {
     const dir = getGameDir()
     if (!dir) return { ok: false, message: 'Ultima IV install not found.' }
     try {
-      const meta = await store.take(dir, 'manual', typeof label === 'string' ? label : undefined)
+      const meta = await ctx().store.take(dir, 'manual', typeof label === 'string' ? label : undefined, new Date(), overlay())
       await changed()
       return { ok: true, value: meta }
     } catch (err) {
@@ -77,11 +89,11 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
     try {
       if (typeof id !== 'string') throw new WriteRefused('Invalid snapshot id.')
       if (await isGameRunning()) throw new WriteRefused('Close DOSBox first: the game must not be running while its save is changed.')
-      const { meta, files } = await store.read(id)
+      const { meta, files } = await ctx().store.read(id)
       const s = meta.summary
       const detail = `${new Date(meta.createdAt).toLocaleString()}${s ? `\n${s.names.join(', ')} · ${s.location} (${s.x},${s.y}) · ${s.moves} moves · ${s.avatarCount}/8 Avatarhoods` : ''}\n\nYour current save is backed up first, so this can be undone.`
       if (!(await confirm(e, 'Restore this snapshot over your current save?', detail, 'Restore'))) return CANCELLED
-      const { backup } = await writeSaveFiles(getGameDir(), files, 'pre-restore', { isGameRunning, snapshots: store })
+      const { backup } = await writeSaveFiles(ctx().loc, files, 'pre-restore', deps())
       await changed()
       return { ok: true, value: backup }
     } catch (err) {
@@ -93,7 +105,7 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
     try {
       if (typeof id !== 'string') throw new WriteRefused('Invalid snapshot id.')
       if (!(await confirm(e, 'Delete this snapshot?', 'This only removes the companion\'s backup copy, never your game save.', 'Delete'))) return CANCELLED
-      await store.remove(id)
+      await ctx().store.remove(id)
       await changed()
       return { ok: true, value: null }
     } catch (err) {
@@ -109,7 +121,7 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
   /** The save as it is on disk (not live memory): that is what an edit replaces. */
   ipcMain.handle(IPC.editorLoad, async (): Promise<SavesResult<{ party: PartySave; path: string; gameRunning: boolean }>> => {
     const dir = getGameDir()
-    const path = dir ? effectiveSavePaths(dir)['PARTY.SAV'] : undefined
+    const path = dir ? effectiveSavePaths(dir, existsSync, overlay())['PARTY.SAV'] : undefined
     if (!path) return { ok: false, message: 'No PARTY.SAV found.' }
     try {
       return { ok: true, value: { party: parsePartySav(new Uint8Array(await readFile(path))), path, gameRunning: await isGameRunning() } }
@@ -123,7 +135,7 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
       if (!loadSettings().editorEnabled) throw new WriteRefused('The save editor is turned off in Settings.')
       if (await isGameRunning()) throw new WriteRefused('Close DOSBox first: the game must not be running while its save is changed.')
       const dir = getGameDir()
-      const path = dir ? effectiveSavePaths(dir)['PARTY.SAV'] : undefined
+      const path = dir ? effectiveSavePaths(dir, existsSync, overlay())['PARTY.SAV'] : undefined
       if (!path) throw new WriteRefused('No PARTY.SAV found.')
       const base = new Uint8Array(await readFile(path))
       if (base.length < PARTY_SAV_SIZE) throw new WriteRefused('The current PARTY.SAV is incomplete.')
@@ -138,7 +150,7 @@ export function setupSavesIpc(store: SnapshotStore, getGameDir: () => string | n
       if (!changes.length) throw new WriteRefused('No changes to write.')
       const detail = `${changes.slice(0, 20).join('\n')}${changes.length > 20 ? `\n…and ${changes.length - 20} more` : ''}\n\nYour current save is backed up first, so this can be undone from Snapshots.`
       if (!(await confirm(e, `Write ${changes.length} change${changes.length === 1 ? '' : 's'} to PARTY.SAV?`, detail, 'Write save'))) return CANCELLED
-      const { backup } = await writeSaveFiles(dir, { 'PARTY.SAV': bytes }, 'pre-edit', { isGameRunning, snapshots: store })
+      const { backup } = await writeSaveFiles(ctx().loc, { 'PARTY.SAV': bytes }, 'pre-edit', deps())
       await changed()
       return { ok: true, value: backup }
     } catch (err) {

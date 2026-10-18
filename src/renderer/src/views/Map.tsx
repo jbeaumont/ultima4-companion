@@ -4,6 +4,7 @@ import { cellStyle, isRoomCell, roomIndex } from '@domain/dungeonGlyphs'
 import { FOG_SIZE, exploredPercent, isExplored } from '@domain/fog'
 import { MOONGATES, gateState } from '@domain/moongates'
 import { tileName } from '@domain/tiles'
+import { cellVisible, seenCount, townVisible } from '@domain/mapGating'
 import { altarRoomLabel, arrowAngle, liveMonsters, orbLabel, stoneAltarAt } from '@domain/dungeonInfo'
 import { DUNGEON_LEVELS, DUNGEON_SIZE, ROOM_SIZE, decodeDungeonCell, parseDng, parseDngMapSav } from '@parsers/dungeon'
 import type { Dungeon } from '@parsers/dungeon'
@@ -19,6 +20,7 @@ import type { DrawArgs } from '../canvas/MapCanvas'
 import { buildAtlas, drawGrid, drawTile } from '../canvas/tiles'
 import type { TileAtlas } from '../canvas/tiles'
 import { tilePx, tileToScreen, visibleRange } from '../canvas/viewport'
+import { useDungeonFog } from '../useDungeonFog'
 import { useExplored } from '../useExplored'
 import { useJournal } from '../useJournal'
 
@@ -226,6 +228,13 @@ function DungeonMap(props: {
   const { base, id, dungeon, level, onLevel, party, stamp } = props
   const { journal } = useJournal()
   const spoilers = journal?.spoilerLevel === 'full'
+  const [fog, setFog] = useDungeonFog()
+  const [reveal, setReveal] = useState(false)
+  const seen = useMemo(() => seenCount(fog, id, level), [fog, id, level])
+  const resetDungeonFog = (): void => {
+    if (!window.confirm('Reset the dungeon fog? All seen dungeon cells will be forgotten.')) return
+    window.u4.resetDungeonFog().then(setFog, () => undefined)
+  }
   const [liveOn, setLiveOn] = useState(true)
   const [saved, setSaved] = useState<Uint8Array[] | null>(null)
   const [room, setRoom] = useState<number | null>(null)
@@ -263,6 +272,13 @@ function DungeonMap(props: {
           </button>
         ))}
       </div>
+      <div className="toolbar">
+        <label className="check">
+          <input type="checkbox" checked={reveal || spoilers} disabled={spoilers} onChange={(e) => setReveal(e.target.checked)} /> Reveal whole dungeon (spoilers)
+        </label>
+        <span className="muted small">{seen} of 64 cells seen on this level</span>
+        <button className="btn small" onClick={resetDungeonFog}>Reset dungeon fog</button>
+      </div>
       {inDungeon && (
         <label className="check">
           <input type="checkbox" checked={liveOn} onChange={(e) => setLiveOn(e.target.checked)} /> Live monsters
@@ -275,9 +291,11 @@ function DungeonMap(props: {
             {Array.from({ length: DUNGEON_SIZE * DUNGEON_SIZE }, (_, i) => {
               const x = i % DUNGEON_SIZE
               const y = Math.floor(i / DUNGEON_SIZE)
+              const isParty = !!here && here.dungeonLevel === level && here.x === x && here.y === y
+              const shown = isParty || cellVisible(fog, id, level, x, y, journal?.spoilerLevel, reveal)
+              if (!shown) return <div key={i} className="dcell unknown" onMouseEnter={() => setHover('')} />
               const cell = decodeDungeonCell(cells[i]!)
               const st = cellStyle(cell)
-              const isParty = !!here && here.dungeonLevel === level && here.x === x && here.y === y
               const clickable = isRoomCell(cell)
               const roomNo = clickable ? roomIndex(cell, level, id) : -1
               const altar = altarRoomLabel(id, level, x, y, cell)
@@ -320,6 +338,8 @@ export function MapView({ state }: { state: GameState | null }) {
   const [follow, setFollow] = useState(true)
   const [gates, setGates] = useState(true)
   const [fogOn, setFogOn] = useState(readFogPref)
+  const { journal } = useJournal()
+  const [showTown, setShowTown] = useState<number | null>(null) // session-only spoiler override, one town at a time
   const [explored, setExplored] = useExplored()
   const percent = useMemo(() => (explored ? exploredPercent(explored) : 0), [explored])
   const [floor, setFloor] = useState(0)
@@ -422,7 +442,14 @@ export function MapView({ state }: { state: GameState | null }) {
   else if (place.status === 'fail') body = <p className="muted">Could not load the files for this location.</p>
   else {
     const p = place.value
-    if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} fog={fogOn ? explored : null} />
+    if (p.kind === 'settlement' && !townVisible(sel, journal?.visited ?? [], journal?.spoilerLevel, showTown === sel)) {
+      body = (
+        <div className="town-hidden">
+          <p className="muted">Not visited yet: visit it in the game to reveal its map</p>
+          <button className="btn small" onClick={() => setShowTown(sel)}>Show anyway (spoilers)</button>
+        </div>
+      )
+    } else if (p.kind === 'world') body = <WorldMap base={base.value} party={party} center={centerSeq} gates={gates} fog={fogOn ? explored : null} />
     else if (p.kind === 'settlement') {
       body = <SettlementMap base={base.value} id={sel} floors={p.floors} convs={p.convs} floor={floor} party={party} center={centerSeq} />
     } else body = <DungeonMap base={base.value} id={sel} dungeon={p.dungeon} level={level} onLevel={(l) => { setFollow(false); setLevel(l) }} party={party} stamp={state} />

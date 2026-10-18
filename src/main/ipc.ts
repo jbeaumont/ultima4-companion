@@ -7,7 +7,7 @@ import { LZW_IMAGES, RLE_IMAGES } from '@parsers/egaImage'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
-import { getExplored, loadExplored, resetExplored, trackExplored } from './explored'
+import { getDungeonFog, getExplored, loadDungeonFog, loadExplored, resetDungeonFog, resetExplored, trackExplored } from './explored'
 import { toggleHud } from './hud'
 import { loadJournal, recordJournalVisit, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
@@ -15,13 +15,26 @@ import { setupSavesIpc } from './saves/savesIpc'
 import { setupSageIpc } from './sage/sageIpc'
 import { SnapshotStore } from './saves/snapshots'
 import { loadSettings, saveSettings } from './store'
+import { LaunchRefused, launchGame } from './launcher'
+import { TEST_MODE, overlayDir, saveLocationFor, testRoot } from './mode'
+import { cp, mkdir, rm } from 'node:fs/promises'
+import { realOverlay } from './saveLocation'
+import { SAVE_FILES } from './saves/snapshots'
 
 let source: HybridSource | null = null
 let gameDir: string | null = null
 let autoSnapshot: (s: GameState) => void = () => {}
 
 const send = (channel: string, payload: unknown): void => {
-  for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload)
+  for (const w of BrowserWindow.getAllWindows()) {
+    // live state can arrive while a window is closing
+    if (w.isDestroyed() || w.webContents.isDestroyed()) continue
+    try {
+      w.webContents.send(channel, payload)
+    } catch {
+      // frame disposed between the check and the send
+    }
+  }
 }
 
 // settlement visits are recorded here so they count even when the Dialogue view is closed
@@ -36,7 +49,7 @@ const onState = (state: GameState): void => {
 async function startSource(): Promise<void> {
   await source?.stop()
   gameDir = await locateGameDir(loadSettings().gameDir)
-  source = new HybridSource(gameDir, loadSettings().liveMemory !== false, (s) => autoSnapshot(s))
+  source = new HybridSource(gameDir, loadSettings().liveMemory !== false, (s) => autoSnapshot(s), gameDir ? overlayDir(gameDir) : undefined)
   source.start(onState)
 }
 
@@ -51,7 +64,8 @@ export async function setupIpc(): Promise<void> {
 
   ipcMain.handle(IPC.getSettings, (): SettingsInfo => ({
     gameDir,
-    savePath: pickSavePath(gameDir, existsSync),
+    savePath: pickSavePath(gameDir, existsSync, gameDir ? overlayDir(gameDir) : undefined),
+    testMode: TEST_MODE,
     override: loadSettings().gameDir ?? null,
     liveMemory: loadSettings().liveMemory !== false,
     attachedPid: source?.attachment()?.pid ?? null,
@@ -115,10 +129,10 @@ export async function setupIpc(): Promise<void> {
     }
   })
 
-  // live dungeon working copy: the cloud_saves overlay wins, as with PARTY.SAV
+  // live dungeon working copy: the overlay wins, as with PARTY.SAV
   ipcMain.handle(IPC.assetsDngmap, async (): Promise<Uint8Array | null> => {
     if (!gameDir) return null
-    for (const p of [join(gameDir, 'cloud_saves', 'DNGMAP.SAV'), join(gameDir, 'DNGMAP.SAV')]) {
+    for (const p of [join(overlayDir(gameDir), 'DNGMAP.SAV'), join(gameDir, 'DNGMAP.SAV')]) {
       if (!existsSync(p)) continue
       try {
         return new Uint8Array(await readFile(p))
@@ -131,14 +145,50 @@ export async function setupIpc(): Promise<void> {
 
   ipcMain.handle(IPC.exploredGet, (): Uint8Array => getExplored())
   ipcMain.handle(IPC.exploredReset, (): Uint8Array => resetExplored())
+  ipcMain.handle(IPC.dungeonFogGet, (): Uint8Array => getDungeonFog())
+  ipcMain.handle(IPC.dungeonFogReset, (): Uint8Array => resetDungeonFog())
   ipcMain.handle(IPC.hudToggle, (): boolean => toggleHud())
 
   ipcMain.handle(IPC.journalGet, () => loadJournal())
   ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
 
   setupSageIpc(join(app.getPath('userData'), 'sage-key.bin'), () => source?.getState() ?? null, send)
-  autoSnapshot = setupSavesIpc(new SnapshotStore(join(app.getPath('userData'), 'snapshots')), () => gameDir, send).autoSnapshot
+  const store = new SnapshotStore(join(app.getPath('userData'), 'snapshots'))
+  autoSnapshot = setupSavesIpc(() => ({
+    loc: gameDir ? saveLocationFor(gameDir) : null,
+    store,
+    testRoot: gameDir ? testRoot(gameDir) : ''
+  }), send).autoSnapshot
+
+  // play in a normal instance, turbo test profile in a --test instance
+  ipcMain.handle(IPC.launchGame, async (): Promise<{ ok: true; profile: string } | { ok: false; message: string }> => {
+    if (!gameDir) return { ok: false, message: 'Ultima IV install not found.' }
+    const profile = TEST_MODE ? 'test' : 'play'
+    try {
+      await launchGame({ profile, gameDir, overlayDir: overlayDir(gameDir), confDir: app.getPath('userData') })
+      return { ok: true, profile }
+    } catch (err) {
+      return { ok: false, message: err instanceof LaunchRefused ? err.message : `Could not start DOSBox: ${(err as Error).message}` }
+    }
+  })
+
+  // test instances only: reset the test saves, optionally seeded from the real saves (read-only copy)
+  ipcMain.handle(IPC.seedTestSaves, async (_e, from: unknown): Promise<{ ok: true } | { ok: false; message: string }> => {
+    if (!TEST_MODE || !gameDir) return { ok: false, message: 'Only available in a test instance.' }
+    const dir = overlayDir(gameDir)
+    await rm(dir, { recursive: true, force: true })
+    await mkdir(dir, { recursive: true })
+    if (from === 'real') {
+      for (const f of SAVE_FILES) {
+        const src = join(realOverlay(gameDir), f)
+        if (existsSync(src)) await cp(src, join(dir, f))
+      }
+    }
+    await startSource()
+    return { ok: true }
+  })
 
   await loadExplored((bits) => send(IPC.exploredChanged, bits))
+  await loadDungeonFog((bits) => send(IPC.dungeonFogChanged, bits))
   await startSource()
 }

@@ -91,9 +91,45 @@ export function Settings({ state, onState }: Props) {
     }
   }
 
+  const [seedMsg, setSeedMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const seed = async (from: 'real' | 'empty'): Promise<void> => {
+    const what = from === 'real'
+      ? 'Replace the test saves with a copy of your real save?'
+      : 'Replace the test saves with an empty save folder (a new game)?'
+    if (!window.confirm(`${what} Your real game is not touched.`)) return
+    setBusy(true)
+    setSeedMsg(null)
+    try {
+      const r = await window.u4.seedTestSaves(from)
+      setSeedMsg(r.ok ? { ok: true, text: from === 'real' ? 'Test saves reset from your real save.' : 'Test saves reset to an empty folder.' } : { ok: false, text: r.message })
+    } catch {
+      setSeedMsg({ ok: false, text: 'Could not reset the test saves.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <h2>Settings</h2>
+      {info?.testMode && (
+        <section className="panel settings">
+          <h3>Test saves</h3>
+          <p className="muted small">
+            This is a test instance. Its saves are separate from the real game, and so are its journal, fog of war and snapshots.
+          </p>
+          <div className="key-row">
+            <button className="btn" disabled={busy} onClick={() => void seed('real')}>Reset test saves from my real save</button>
+            <button className="btn" disabled={busy} onClick={() => void seed('empty')}>Reset to an empty save folder (new game)</button>
+          </div>
+          {seedMsg && <p className={`result ${seedMsg.ok ? 'ok' : 'error'}`}>{seedMsg.text}</p>}
+        </section>
+      )}
+      {info && !info.testMode && (
+        <p className="muted small">
+          Play Ultima IV launches the game windowed beside the companion with your normal saves (no changes to the game folder).
+        </p>
+      )}
       <section className="panel settings">
         <dl>
           <dt>Game folder</dt>

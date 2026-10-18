@@ -31,10 +31,10 @@ const KEEP_AUTO = 50
  * The files DOSBox actually sees: GOG mounts cloud_saves as an overlay, so a file
  * there wins over the copy in the game folder.
  */
-export function effectiveSavePaths(gameDir: string, exists: (p: string) => boolean = existsSync): Partial<Record<SaveFile, string>> {
+export function effectiveSavePaths(gameDir: string, exists: (p: string) => boolean = existsSync, overlayDir = join(gameDir, 'cloud_saves')): Partial<Record<SaveFile, string>> {
   const out: Partial<Record<SaveFile, string>> = {}
   for (const f of SAVE_FILES) {
-    const cloud = join(gameDir, 'cloud_saves', f)
+    const cloud = join(overlayDir, f)
     const root = join(gameDir, f)
     if (exists(cloud)) out[f] = cloud
     else if (exists(root)) out[f] = root
@@ -105,9 +105,9 @@ export class SnapshotStore {
   }
 
   /** Copy the game's current save files. Auto snapshots identical to the newest one are skipped. */
-  async take(gameDir: string, reason: SnapshotReason, label?: string, now = new Date()): Promise<SnapshotMeta | null> {
+  async take(gameDir: string, reason: SnapshotReason, label?: string, now = new Date(), overlayDir?: string): Promise<SnapshotMeta | null> {
     const files: Partial<Record<SaveFile, Uint8Array>> = {}
-    for (const [f, path] of Object.entries(effectiveSavePaths(gameDir)) as [SaveFile, string][]) {
+    for (const [f, path] of Object.entries(effectiveSavePaths(gameDir, existsSync, overlayDir)) as [SaveFile, string][]) {
       files[f] = new Uint8Array(await readFile(path))
     }
     if (!files['PARTY.SAV']) return null

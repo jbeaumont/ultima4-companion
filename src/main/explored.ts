@@ -2,6 +2,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { emptyFog, reveal, validFog } from '@domain/fog'
+import { emptyDungeonFog, revealDungeon, validDungeonFog } from '@domain/dungeonFog'
 import type { PartySave } from '@parsers/party'
 
 // Lives in userData, never in the (read-only) game folder.
@@ -80,9 +81,59 @@ export function resetExplored(): Uint8Array {
   return bits
 }
 
+// --- dungeon cells seen (separate small file, same throttling) ---
+const dngFile = () => join(app.getPath('userData'), 'explored-dungeons.bin')
+let dng = emptyDungeonFog()
+let dngDirty = false
+let dngTimer: NodeJS.Timeout | null = null
+let onDngChanged: ((bits: Uint8Array) => void) | null = null
+let dngPush: NodeJS.Timeout | null = null
+
+export async function loadDungeonFog(push: (bits: Uint8Array) => void): Promise<void> {
+  onDngChanged = push
+  try {
+    const raw = new Uint8Array(await readFile(dngFile()))
+    if (validDungeonFog(raw)) dng = raw
+  } catch {
+    // missing or corrupt: start fresh
+  }
+  app.on('before-quit', () => {
+    if (dngDirty) void writeDungeonFog()
+  })
+}
+
+const writeDungeonFog = async (): Promise<void> => {
+  if (dngTimer) clearTimeout(dngTimer)
+  dngTimer = null
+  dngDirty = false
+  const tmp = `${dngFile()}.tmp`
+  await writeFile(tmp, dng.slice())
+  await rename(tmp, dngFile())
+}
+
+export const getDungeonFog = (): Uint8Array => dng
+
+export function resetDungeonFog(): Uint8Array {
+  dng = emptyDungeonFog()
+  dngDirty = true
+  void writeDungeonFog()
+  onDngChanged?.(dng)
+  return dng
+}
+
 /** Reveal around the party: on the surface where it stands, indoors where it entered. */
 export function trackExplored(party: PartySave | null): void {
   if (!party) return
+  if (party.location >= 17 && party.location <= 24 && party.dungeonLevel <= 7) {
+    if (revealDungeon(dng, party.location, party.dungeonLevel, party.x, party.y)) {
+      dngDirty = true
+      dngTimer ??= setTimeout(() => void writeDungeonFog().catch(() => undefined), SAVE_MS)
+      dngPush ??= setTimeout(() => {
+        dngPush = null
+        onDngChanged?.(dng)
+      }, PUSH_MS)
+    }
+  }
   const surface = party.location === 0
   const x = surface ? party.x : party.outX
   const y = surface ? party.y : party.outY
