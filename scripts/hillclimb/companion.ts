@@ -25,6 +25,33 @@ export class Companion {
 
   private constructor(private ws: WebSocket) {}
 
+  /** The pop-out HUD window (opened if needed), as its own connection. */
+  async hud(port = 9241): Promise<Companion> {
+    const find = async () => (await targets(port))?.find((p) => p.type === 'page' && p.url.includes('#hud'))
+    if (!(await find())) await this.eval('window.u4.toggleHud()')
+    const until = Date.now() + 10000
+    while (Date.now() < until) {
+      const t = await find()
+      if (t) return Companion.open(t)
+      await sleep(300)
+    }
+    throw new Error('the HUD window did not open')
+  }
+
+  private static async open(t: Target): Promise<Companion> {
+    const ws = new WebSocket(t.webSocketDebuggerUrl)
+    await new Promise((r, j) => {
+      ws.addEventListener('open', r)
+      ws.addEventListener('error', j)
+    })
+    return new Companion(ws)
+  }
+
+  /** Visible text of the whole page (for windows without a sidebar, like the HUD). */
+  async text(): Promise<string> {
+    return this.eval<string>('document.body.innerText')
+  }
+
   static async connect(port = 9241, cwd = process.cwd()): Promise<Companion> {
     if (!(await targets(port))) {
       const child = spawn('npm', ['run', 'dev:test'], { cwd, shell: true, detached: true, stdio: 'ignore', windowsHide: true })
@@ -34,12 +61,7 @@ export class Companion {
     while (Date.now() < until) {
       const t = (await targets(port))?.find((p) => p.type === 'page' && /^(http|file)/.test(p.url) && !p.url.includes('#hud'))
       if (t) {
-        const ws = new WebSocket(t.webSocketDebuggerUrl)
-        await new Promise((r, j) => {
-          ws.addEventListener('open', r)
-          ws.addEventListener('error', j)
-        })
-        const c = new Companion(ws)
+        const c = await Companion.open(t)
         await c.until('document.querySelector(".sidebar") !== null', 30000)
         return c
       }
