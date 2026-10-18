@@ -8,6 +8,7 @@ import type { SpoilerLevel } from '@domain/hints'
 import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { elevationSteps } from '@domain/elevation'
+import { hawkwindBand } from '@domain/hawkwind'
 import { partyAlerts } from '@domain/partyCondition'
 import { progress } from '@domain/progress'
 import { canSaveHere } from '@domain/unsaved'
@@ -82,12 +83,13 @@ function VirtueCards({ p, art }: { p: PartySave; art: DashboardArt | null }) {
               {avatar && <div className="d-ankh" title="Partial Avatarhood">☥</div>}
               <div className="d-meter"><div className="d-fill" style={{ width: `${avatar ? 100 : Math.min(100, (k / 99) * 100)}%` }} /></div>
               <div className="d-vrow">
-                <span className="k">{avatar ? 'Partial Avatar' : `${k} / 99`}</span>
+                <span className="k" title={hawkwindBand(k).label}>{avatar ? 'Partial Avatar' : `${k} / 99`}</span>
                 <span className="d-badges">
                   <span className={`d-rune${bit(p.runes, i) ? ' on' : ''}`} title={`Rune of ${v}`}>R</span>
                   <Gem i={i} on={bit(p.stones, i)} />
                 </span>
               </div>
+              {!avatar && <div className={`d-band b${hawkwindBand(k).step}`}>{hawkwindBand(k).label}</div>}
             </div>
           )
         })}
@@ -187,7 +189,9 @@ function Timers({ p }: { p: PartySave }) {
   return (
     <section className="panel d-timers">
       <h3>Timers</h3>
-      {row('Meditation', c.meditation)}
+      <div title="Consulting Hawkwind uses the same once-per-hundred-moves timer">
+        <span>Meditation / Hawkwind</span><b className={c.meditation.ready ? '' : 'w'}>{timerLabel(c.meditation).toLowerCase()}</b>
+      </div>
       {row('Camping', c.camp)}
       {row('Virtue talk', c.virtue)}
     </section>
