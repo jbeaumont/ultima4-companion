@@ -20,7 +20,7 @@ const COST: Record<number, number> = {
   28: 1, // ladder down
   29: 1, // ruins
   30: 1, // shrine (walking onto it does not enter)
-  59: 2, // door: walking into it opens it
+  59: 2, // door: opened with O, east or west only (the driver does this)
   60: 1, // chest
   62: 1, // brick floor
   63: 1, // wood floor

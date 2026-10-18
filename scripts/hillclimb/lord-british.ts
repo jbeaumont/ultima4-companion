@@ -1,4 +1,4 @@
-// Hill-climb journey: a hurt, poisoned Avatar with enough experience for level 4
+// Hill-climb journey: a poisoned Avatar with enough experience for level 4
 // visits Lord British, levels up and asks him for healing. Checks whether the
 // companion says a level is waiting, and that it follows the level-up and cure.
 //   npx tsx scripts/hillclimb/lord-british.ts <outDir>
@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   const s0 = parsePartySav(raw)
   const me = s0.allRecords[0]!
   me.xp = 450 // enough for level 4
-  me.hp = 60
+  me.hp = me.hpMax // poison costs 2 HP every turn; with 60 HP the Avatar died on the walk (#19)
   me.status = 'P'
   s0.lbIntro = true
   s0.x = ENTRANCES[CASTLE]!.x
@@ -73,7 +73,10 @@ async function main(): Promise<void> {
 
   let s = await d.enter()
   log(`in the castle at ${s.x},${s.y}`)
+  d.trace = !!process.env['TRACE']
+  const tw = Date.now()
   await d.walkTo(3, 3)
+  log(`at the ladder after ${Date.now() - tw} ms`)
   await d.press('k')
   await sleep(500)
   log('climbed to the second floor')
