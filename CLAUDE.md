@@ -18,7 +18,7 @@ Full roadmap: see the "Milestones" section of README.md.
 ## Game data facts
 - Install: `C:\Program Files\GOG Galaxy\Games\Ultima 4` (override with `U4_DIR`)
 - GOG mounts `cloud_saves\` as a DOSBox overlay: live saves are `cloud_saves\PARTY.SAV`, falling back to the root copy
-- The game writes PARTY.SAV mainly on Q (Quit & Save)
+- The game writes PARTY.SAV on Q (Quit & Save), which only works outdoors ("Not Here!" in towns); entering a town or dungeon writes OUTMONST.SAV
 - Format spec: xu4 `doc/FileFormats.md`. Correction: WORLD.MAP chunks are row-major (8 per row), verified against known town tiles
 - Lord British's castle has two floors: `LCB_1.ULT` and `LCB_2.ULT`
 - PARTY.SAV x,y is the position on the current map (surface, town or dungeon 0-7); 0x1EE/0x1EF are the surface return position (u4-decompiled `out_x/out_y`), not dungeon coords as xu4 FileFormats.md says

@@ -75,7 +75,7 @@ function Checklist({ p }: { p: PartySave }) {
   )
 }
 
-function Timers({ p }: { p: PartySave }) {
+function Timers({ p, live }: { p: PartySave; live: boolean }) {
   const c = cooldowns(p)
   const row = (name: string, t: { ready: boolean; movesLeft: number }, extra?: React.ReactNode) => (
     <div className="timer-row">
@@ -95,7 +95,11 @@ function Timers({ p }: { p: PartySave }) {
           {c.reagent.canSearch ? 'can search now' : 'cannot search yet'}
         </span>
       ))}
-      <p className="muted small">As of the last save: the game only writes PARTY.SAV on Quit &amp; Save.</p>
+      <p className="muted small">
+        {live
+          ? 'Live from the running game.'
+          : 'As of the last save: the game only writes PARTY.SAV on Quit & Save, which works only outdoors.'}
+      </p>
     </Section>
   )
 }
@@ -218,7 +222,7 @@ export function JournalView({ state }: { state: GameState | null }) {
           <Header p={p} />
           <div className="grid">
             <Virtues p={p} />
-            <Timers p={p} />
+            <Timers p={p} live={state?.source === 'memory'} />
             <Checklist p={p} />
             <Moongates p={p} />
           </div>
