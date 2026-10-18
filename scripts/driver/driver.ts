@@ -7,11 +7,13 @@ import { parseWorldMap, WORLD_SIZE } from '../../src/parsers/worldMap'
 import { findRoute } from '../../src/domain/pathfind'
 import { stepCost } from '../../src/domain/walkable'
 import type { Dir, Grid } from '../../src/domain/pathfind'
-import { SPELL_CAST, planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
+import { SPELL_CAST, combatWalkable, planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
 import { BATTLE_DS, parseBattle } from '../../src/parsers/battle'
 import type { BattleMonster } from '../../src/parsers/battle'
-import type { CombatAction, CombatView } from '../../src/domain/combatPlan'
-import { DNG_SIZE, dungeonRoute, stepKeys } from '../../src/domain/dungeonRoute'
+import type { CombatAction, CombatView, Point } from '../../src/domain/combatPlan'
+import { DNG_SIZE, ENERGY_FIELD, dungeonPath, dungeonPlan, roomExits, stepDir, stepKeys } from '../../src/domain/dungeonRoute'
+import { parseDng } from '../../src/parsers/dungeon'
+import { LOCATIONS } from '../../src/domain/constants'
 import { looksLikeParty } from '../../src/main/memory/scan'
 import { scanProcess } from '../../src/main/memory/memorySource'
 import { ProcessReader, dosboxProcesses, isTestDosbox } from '../../src/main/memory/win32'
@@ -22,6 +24,7 @@ import type { Key } from './input'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const DOOR = 59 // unlocked door; 58 is locked and needs a key
+const DNG_DELTA = [[-1, 0], [0, -1], [1, 0], [0, 1]] as const // dungeon directions W, N, E, S
 
 // Game globals as offsets in the data segment (u4-decompiled U4.H). The party
 // block found in memory is `Party` at DS:9144, which gives the segment base.
@@ -56,6 +59,7 @@ export class GameDriver {
   private reader: ProcessReader | null = null
   private address = 0n
   private grids = new Map<number, Grid>()
+  private dng: { location: number; data: ReturnType<typeof parseDng> } | null = null
   log: (msg: string) => void = (m) => console.log(m)
   /** Log every walking step that doesn't simply succeed (for diagnosing slow walks). */
   trace = false
@@ -350,11 +354,15 @@ export class GameDriver {
     const log: string[] = []
     const start = this.state()
     let turns = 0
+    const triggers = this.roomTriggers()
+    const stepped = new Set<string>()
     for (; turns < (opts.maxTurns ?? 300); turns++) {
       const b = await this.awaitPrompt(30000)
       if (!b) break
       const me = b.awaiting!
-      const action = planCombatTurn({ ...b.view, prefer: opts.exitToward }, opts.goal ?? 'fight')
+      for (const p of b.view.party) if (p) stepped.add(`${p.x},${p.y}`)
+      const open = triggers.filter((t) => !stepped.has(`${t.x},${t.y}`))
+      const action = planCombatTurn({ ...b.view, prefer: opts.exitToward, triggers: open }, opts.goal ?? 'fight')
       const at = b.view.party[me]!
       const what = action.kind === 'pass' ? '' : action.kind === 'cast' ? ` ${action.spell} ${action.who !== undefined ? `on ${start.members[action.who]?.name}` : action.dir}` : ` ${action.dir}`
       log.push(`${start.members[me]?.name ?? me}@${at.x},${at.y} ${action.kind}${what} (${b.monsters.length} monsters)`)
@@ -374,6 +382,30 @@ export class GameDriver {
   }
 
   // ---- dungeons -----------------------------------------------------------
+
+  /** The current dungeon's file data (levels and rooms). */
+  private dungeonFile(): ReturnType<typeof parseDng> {
+    const loc = this.state().location
+    if (this.dng?.location !== loc) {
+      const file = LOCATIONS[loc]?.file
+      if (!file?.endsWith('.DNG')) throw new DriverError('Not in a dungeon')
+      this.dng = { location: loc, data: parseDng(new Uint8Array(readFileSync(join(this.gameDir, file)))) }
+    }
+    return this.dng.data
+  }
+
+  /** Sides each room of this dungeon can be left by (openings and trigger-opened edges). */
+  private roomSides(): (room: number) => Set<number> {
+    const sides = this.dungeonFile().rooms.map((r) => roomExits(r, combatWalkable))
+    return (room) => sides[room] ?? new Set([0, 1, 2, 3])
+  }
+
+  /** Trigger cells of the dungeon room the party is fighting in (none outside rooms). */
+  private roomTriggers(): Point[] {
+    if (this.mode() !== MODE.room) return []
+    const room = this.dungeonFile().rooms[this.dungeonCell() & 0x0f]
+    return room?.triggers.map((t) => ({ x: t.x, y: t.y })) ?? []
+  }
 
   /** The live layout of the current dungeon level (64 raw cells, row-major). */
   dungeonLevel(): Uint8Array {
@@ -403,10 +435,11 @@ export class GameDriver {
   async dungeonWalkTo(
     tx: number,
     ty: number,
-    opts: { throughRooms?: boolean; stopOnBattle?: boolean; maxSteps?: number; onBattle?: (r: BattleResult) => void } = {}
+    opts: { throughRooms?: boolean; dispel?: boolean; stopOnBattle?: boolean; maxSteps?: number; onBattle?: (r: BattleResult) => void } = {}
   ): Promise<PartySave> {
     const level0 = this.state().dungeonLevel
     let onward: Dir | undefined // where the route goes after the cell we just stepped into
+    const roomVisits = new Map<string, number>()
     for (let step = 0; step < (opts.maxSteps ?? 200); step++) {
       if (this.inBattle()) {
         if (opts.stopOnBattle) return this.state()
@@ -419,18 +452,84 @@ export class GameDriver {
       const s = this.state()
       if (s.dungeonLevel !== level0) throw new DriverError(`Changed level while walking (now L${s.dungeonLevel + 1})`)
       if (s.x === tx && s.y === ty) return s
-      // rooms mean a battle each time, so only go through one when there is no other way
+      // rooms only by the sides they open on; energy fields only when we can Dispel
       const level = this.dungeonLevel()
-      const route = dungeonRoute(level, s.x, s.y, tx, ty, opts.throughRooms) ?? dungeonRoute(level, s.x, s.y, tx, ty, true)
-      onward = route && route.length > 1 ? (['left', 'up', 'right', 'down'] as const)[route[1]!] : undefined
-      if (!route?.length) throw new DriverError(`No dungeon route from ${s.x},${s.y} to ${tx},${ty} on L${s.dungeonLevel + 1}`)
-      for (const k of stepKeys(s.orientation, route[0]!)) {
+      const sides = this.roomSides()
+      const path = dungeonPath([level], { z: 0, x: s.x, y: s.y }, { z: 0, x: tx, y: ty }, false, sides) ??
+        (opts.dispel ? dungeonPath([level], { z: 0, x: s.x, y: s.y }, { z: 0, x: tx, y: ty }, true, sides) : null)
+      if (!path || path.length < 2) throw new DriverError(`No dungeon route from ${s.x},${s.y} to ${tx},${ty} on L${s.dungeonLevel + 1}`)
+      const route = path.slice(1).map((p, i) => stepDir(path[i]!, p))
+      onward = route.length > 1 ? (['left', 'up', 'right', 'down'] as const)[route[1]!] : undefined
+      const next = path[1]!
+      if ((level[next.y * DNG_SIZE + next.x]! & 0xf0) === 0xd0) {
+        const k = `${next.x},${next.y}`
+        roomVisits.set(k, (roomVisits.get(k) ?? 0) + 1)
+        if (roomVisits.get(k)! > 3) throw new DriverError(`Stuck going through the room at ${k} on L${s.dungeonLevel + 1}`)
+      }
+      const keys = stepKeys(s.orientation, route[0]!)
+      const [dx, dy] = DNG_DELTA[route[0]!]!
+      if (level[((s.y + dy + 8) % 8) * DNG_SIZE + ((s.x + dx + 8) % 8)] === ENERGY_FIELD) {
+        for (const k of keys.slice(0, -1)) await this.press(k) // face the field
+        await this.dispelAhead()
+        continue
+      }
+      for (const k of keys) {
         await this.press(k)
         if (this.inBattle()) break
       }
     }
     throw new DriverError(`Gave up walking to ${tx},${ty}`)
   }
+
+  /**
+   * Cast Dispel on the field in front of the party (in a dungeon it takes no
+   * direction: C, member, D; U4_SPELL.C SPL_Dispel). The spell can fail, so retry.
+   */
+  async dispelAhead(tries = 4): Promise<void> {
+    const DISPEL = 3
+    for (let i = 0; i < tries; i++) {
+      const s = this.state()
+      const caster = s.members.findIndex((m) => m.status === 'G' && m.mp >= 20)
+      if (caster < 0 || (s.mixtures[DISPEL] ?? 0) === 0) throw new DriverError('Cannot Dispel: no Dispel mixture or nobody with 20 MP')
+      const [dx, dy] = DNG_DELTA[s.orientation]!
+      const at = ((s.y + dy + 8) % 8) * DNG_SIZE + ((s.x + dx + 8) % 8)
+      this.key('c')
+      await sleep(150)
+      this.key(String(caster + 1))
+      await sleep(150)
+      this.key('d')
+      await sleep(700)
+      if (this.dungeonLevel()[at] !== ENERGY_FIELD) return
+    }
+    throw new DriverError('Dispel kept failing')
+  }
+
+  /**
+   * Travel to (z, x, y) in the current dungeon across levels: plan over the
+   * dungeon file (the current level from live memory), walk each level, take
+   * ladders. With `dispel`, energy fields on the way are dispelled.
+   */
+  async dungeonTravel(
+    tz: number,
+    tx: number,
+    ty: number,
+    opts: { dispel?: boolean; onBattle?: (r: BattleResult) => void; onLevel?: (s: PartySave) => void } = {}
+  ): Promise<PartySave> {
+    const { levels } = this.dungeonFile()
+    const sides = this.roomSides()
+    for (let hops = 0; hops < 20; hops++) {
+      const s = this.state()
+      if (s.dungeonLevel === tz && s.x === tx && s.y === ty) return s
+      const known = levels.map((l, z) => (z === s.dungeonLevel ? this.dungeonLevel() : l))
+      const plan = dungeonPlan(known, { z: s.dungeonLevel, x: s.x, y: s.y }, { z: tz, x: tx, y: ty }, opts.dispel, sides)
+      if (!plan) throw new DriverError(`No way from L${s.dungeonLevel + 1} ${s.x},${s.y} to L${tz + 1} ${tx},${ty}`)
+      const leg = plan[0]!
+      await this.dungeonWalkTo(leg.x, leg.y, { dispel: opts.dispel, onBattle: opts.onBattle })
+      if (leg.then) opts.onLevel?.(await this.ladder(leg.then))
+    }
+    throw new DriverError('Gave up travelling')
+  }
+
 
   /** Climb (K) or descend (D) the ladder the party stands on. */
   async ladder(dir: 'up' | 'down'): Promise<PartySave> {

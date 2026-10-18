@@ -42,6 +42,8 @@ export interface CombatView {
   exit: { x?: number; y?: number } | null
   /** Side to leave by when free to choose (e.g. onward along a dungeon route). */
   prefer?: Dir
+  /** Room trigger cells not yet stepped on: stepping on one can open a closed side (U4_COMBB.C C_7A15). */
+  triggers?: Point[]
   /** Party health and the caster's magic, to cast Cure, Heal or Magic Missile (omit to only fight). */
   support?: {
     members: { hp: number; hpMax: number; status: string }[]
@@ -166,6 +168,11 @@ export function planCombatTurn(v: CombatView, goal: 'fight' | 'flee' = 'fight'):
     if (want(me.x, me.y)) return { kind: 'move', dir: v.prefer }
     const step = firstStep(v, want)
     if (step) return { kind: 'move', dir: step }
+    // the side we want is closed: a trigger may open it
+    if (v.triggers?.length) {
+      const toTrigger = firstStep(v, (x, y) => (v.triggers!.some((t) => t.x === x && t.y === y) ? 'up' : null))
+      if (toTrigger) return { kind: 'move', dir: toTrigger }
+    }
   }
   const out = exitDir(v, me.x, me.y)
   if (out) return { kind: 'move', dir: out }
