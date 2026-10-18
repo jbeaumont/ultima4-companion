@@ -7,6 +7,8 @@ A desktop companion for **Ultima IV: Quest of the Avatar** (GOG/DOS). It runs ne
 npm install
 npm run dev
 ```
+To build a Windows installer: `npm run dist` (output in `release/`).
+
 The app expects the GOG install at `C:\Program Files\GOG Galaxy\Games\Ultima 4`. Set `U4_DIR` to use a different path.
 
 ## Milestones
@@ -18,7 +20,7 @@ The app expects the GOG install at `C:\Program Files\GOG Galaxy\Games\Ultima 4`.
 6. ✅ Hints, dialogue explorer, clue capture
 7. ✅ Live DOSBox memory mode, fog-of-war, compact HUD
 8. ✅ Save snapshots → editor/cheats
-9. Art gallery, dungeon tools, installer
+9. ✅ Art gallery, dungeon tools, installer
 10. AI sage
 
 ## Credits

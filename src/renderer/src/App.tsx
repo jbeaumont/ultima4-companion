@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGameState } from './useGameState'
 import { Dialogue } from './views/Dialogue'
 import { Editor } from './views/Editor'
+import { Gallery } from './views/Gallery'
 import { Hints } from './views/Hints'
 import { JournalView } from './views/Journal'
 import { MapView } from './views/Map'
@@ -9,7 +10,7 @@ import { Settings } from './views/Settings'
 import { Snapshots } from './views/Snapshots'
 import { Tracker } from './views/Tracker'
 
-const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Dialogue', 'Snapshots', 'Editor', 'Settings'] as const
+const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Dialogue', 'Gallery', 'Snapshots', 'Editor', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
@@ -38,6 +39,8 @@ export function App() {
           <Hints state={state} />
         ) : view === 'Dialogue' ? (
           <Dialogue state={state} />
+        ) : view === 'Gallery' ? (
+          <Gallery state={state} />
         ) : view === 'Snapshots' ? (
           <Snapshots />
         ) : view === 'Editor' ? (
