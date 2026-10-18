@@ -1,5 +1,6 @@
 // The eight companions, in PARTY.SAV template order (name, class).
-import type { CharacterRecord } from '@parsers/party'
+import type { CharacterRecord, PartySave } from '@parsers/party'
+import { LOCATIONS, VIRTUES } from './constants'
 
 export const COMPANIONS = [
   { name: 'Mariah', classIndex: 0 },
@@ -24,4 +25,31 @@ export function companionStatus(
 ): CompanionStatus {
   if (members.some((m) => m.name === c.name)) return 'party'
   return c.classIndex === avatarClass ? 'sameClass' : 'unmet'
+}
+
+/** Town where a companion waits: Moonglow (5) for the mage through Magincia (12) for the shepherd. */
+export const companionTown = (classIndex: number): number => classIndex + 5
+
+export type JoinReadiness =
+  | { kind: 'party' }
+  | { kind: 'sameClass' }
+  | { kind: 'ready'; town: string }
+  | { kind: 'needs'; town: string; reasons: string[] }
+
+/**
+ * Whether a companion would join now, per u4-decompiled U4_TALK.C TLK_join: not
+ * if they share the Avatar's class; the town's virtue must be at least 40 (or 0,
+ * a partial Avatar); and the Avatar's max HP at least 100 x (party size + 1).
+ */
+export function joinReadiness(c: { name: string; classIndex: number }, p: PartySave): JoinReadiness {
+  if (p.members.some((m) => m.name === c.name)) return { kind: 'party' }
+  const avatar = p.allRecords[0]
+  if (c.classIndex === avatar?.classIndex) return { kind: 'sameClass' }
+  const town = LOCATIONS[companionTown(c.classIndex)]?.name ?? '?'
+  const reasons: string[] = []
+  const karma = p.karma[c.classIndex] ?? 0
+  if (karma !== 0 && karma < 40) reasons.push(`${VIRTUES[c.classIndex]} 40 (now ${karma})`)
+  const needHp = 100 * (Math.max(1, p.memberCount) + 1)
+  if ((avatar?.hpMax ?? 0) < needHp) reasons.push(`level ${needHp / 100} (${needHp} max HP)`)
+  return reasons.length ? { kind: 'needs', town, reasons } : { kind: 'ready', town }
 }

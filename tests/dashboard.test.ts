@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CLASSES } from '@domain/constants'
-import { COMPANIONS, companionStatus } from '@domain/companions'
+import { COMPANIONS, companionStatus, joinReadiness } from '@domain/companions'
+import { PARTY_SAV_SIZE } from '@parsers/party'
 import { AVATAR_TILE, CARD_BG, VIRTUE_IMAGES, cardRects, classTile, crop, indicesToRgbaKeyed } from '@domain/dashboardArt'
 import { decodeEgaImage } from '@parsers/egaImage'
 import { parsePartySav } from '@parsers/party'
@@ -67,5 +68,23 @@ describe.skipIf(!hasGame)('virtue card art from the real install', () => {
       const img = decodeEgaImage(file, gameFile(file))!
       for (const r of cardRects(img.pixels)) expect(r && [r.w, r.h]).toEqual([89, 122])
     }
+  })
+})
+
+describe('joinReadiness', () => {
+  const base = parsePartySav(new Uint8Array(PARTY_SAV_SIZE))
+  const party = (hpMax: number, karma: number[], members = 1) => {
+    const avatar = { ...base.allRecords[0]!, name: 'Danny', classIndex: 0, hpMax }
+    const all = [avatar, ...base.allRecords.slice(1)]
+    return { ...base, allRecords: all, members: all.slice(0, members), memberCount: members, karma }
+  }
+  const k = (compassion: number) => [50, compassion, 50, 50, 50, 50, 50, 50]
+
+  it('follows the game: class, the town virtue at 40, and 100 max HP per member plus one', () => {
+    expect(joinReadiness(COMPANIONS[1], party(200, k(60)))).toEqual({ kind: 'ready', town: 'Britain' })
+    expect(joinReadiness(COMPANIONS[0], party(200, k(60))).kind).toBe('sameClass')
+    expect(joinReadiness(COMPANIONS[1], party(200, k(35)))).toEqual({ kind: 'needs', town: 'Britain', reasons: ['Compassion 40 (now 35)'] })
+    expect(joinReadiness(COMPANIONS[1], party(200, k(0))).kind).toBe('ready') // a partial Avatar counts
+    expect(joinReadiness(COMPANIONS[1], party(200, k(60), 2)).kind).toBe('needs') // needs 300 with two members
   })
 })
