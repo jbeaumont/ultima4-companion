@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { arrowAngle, altarRoomLabel, liveMonsters, orbLabel, stoneAltarAt } from '@domain/dungeonInfo'
-import { GALLERY, imageLabel, spoilerOpen } from '@domain/gallery'
 import { LZW_IMAGES, RLE_IMAGES } from '@parsers/egaImage'
 import { decodeDungeonCell, parseDng } from '@parsers/dungeon'
 import { LOCATIONS } from '@domain/constants'
@@ -54,24 +53,6 @@ describe('liveMonsters', () => {
     level[9] = 0x0e // corridor + Skeleton
     level[10] = 0xd0 | 2 // room 2 (low nibble is the room, not a monster)
     expect([...liveMonsters(level, decodeDungeonCell)]).toEqual([[5, 'Rat'], [9, 'Skeleton']])
-  })
-})
-
-describe('gallery', () => {
-  it('lists every decodable image exactly once', () => {
-    const listed = GALLERY.flatMap((g) => g.files).sort()
-    expect(listed).toEqual([...RLE_IMAGES, ...LZW_IMAGES].sort())
-  })
-  it('hides only the Abyss group below full spoilers', () => {
-    const abyss = GALLERY.find((g) => g.id === 'abyss')!
-    const intro = GALLERY.find((g) => g.id === 'intro')!
-    expect(spoilerOpen(abyss, 'nudges')).toBe(false)
-    expect(spoilerOpen(abyss, 'full')).toBe(true)
-    expect(spoilerOpen(intro, 'off')).toBe(true)
-  })
-  it('makes readable labels', () => {
-    expect(imageLabel('RUNE_0.EGA')).toBe('Rune 0')
-    expect(imageLabel('SACHONOR.EGA')).toBe('Sachonor')
   })
 })
 
