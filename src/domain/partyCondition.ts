@@ -24,14 +24,18 @@ export function lordBritishMaxHp(xp: number): number {
   return hp
 }
 
+/** Warn when food would last fewer moves than this. */
+export const FOOD_WARN_MOVES = 300
+
 /** Health alerts, most serious first. Low HP is below a third (bad below a fifth). */
 export function partyAlerts(p: PartySave): PartyAlert[] {
   const out: PartyAlert[] = []
   const cure = mixture(p, 'Cure')
   const heal = mixture(p, 'Heal')
-  for (const m of p.members) {
+  for (const [i, m] of p.members.entries()) {
     if (m.status === 'D') {
-      out.push({ level: 'bad', text: `${m.name} is dead`, hint: 'A healer in town can resurrect them' })
+      // Lord British revives the Avatar when spoken to (U4_LB.C); healers resurrect anyone
+      out.push({ level: 'bad', text: `${m.name} is dead`, hint: i === 0 ? 'Lord British or a healer can revive them' : 'A healer in town can resurrect them' })
       continue
     }
     if (m.status === 'P') {
@@ -49,6 +53,13 @@ export function partyAlerts(p: PartySave): PartyAlert[] {
         hint: heal ? `Cast Heal (${heal} mixed)` : 'Visit a healer, or mix Heal: Ginseng + Spider Silk'
       })
     }
+  }
+  // food is kept in hundredths and each turn eats one per member (U4_UTIL.C food_dec)
+  const movesOfFood = Math.floor(p.food / Math.max(1, p.memberCount))
+  if (p.food <= 0) {
+    out.push({ level: 'bad', text: 'Starving!', hint: 'Every member loses 2 HP a turn: buy food at a market or inn' })
+  } else if (movesOfFood < FOOD_WARN_MOVES) {
+    out.push({ level: 'warn', text: `Food for ${movesOfFood} moves`, hint: 'Buy food at a market or inn before it runs out' })
   }
   for (const m of p.members) {
     const hp = lordBritishMaxHp(m.xp)
