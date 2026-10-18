@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import type { PartySave } from '@parsers/party'
+import { VIRTUES } from '@domain/constants'
 import { cooldowns } from '@domain/cooldowns'
+import type { SpoilerLevel } from '@domain/hints'
 import { MOONGATES, PHASE_NAMES, SPIRITUALITY_RUNE, gateState, stepsUntilRoute, upcomingGates } from '@domain/moongates'
 import { progress } from '@domain/progress'
+import { NOT_EVIL, deedsFor } from '@domain/virtueDeeds'
 import type { ChecklistItem } from '@domain/progress'
 import type { Clue, Journal } from '@shared/journal'
 import { newClueId, routeLabel, timerLabel } from '@shared/format'
@@ -211,6 +214,39 @@ function Clues({ journal, update }: Pick<ReturnType<typeof useJournal>, 'update'
   )
 }
 
+function VirtueGuide({ level }: { level: SpoilerLevel }) {
+  const [open, setOpen] = useState<number | null>(null)
+  if (level === 'off') {
+    return (
+      <Section title="How virtues change">
+        <p className="muted small">Set the hint level to Nudges or Full to see which deeds raise and lower each virtue.</p>
+      </Section>
+    )
+  }
+  return (
+    <Section title="How virtues change">
+      <p className="muted small">
+        From the game's own rules. Creatures that are not evil: {NOT_EVIL}. Losing any karma in a virtue you are already a
+        partial Avatar of drops it back below 99.
+      </p>
+      <div className="deeds">
+        {VIRTUES.map((v, i) => (
+          <div key={v} className="deed-virtue">
+            <button className="link" onClick={() => setOpen(open === i ? null : i)}>{open === i ? '▾' : '▸'} {v}</button>
+            {open === i && (
+              <ul>
+                {deedsFor(i, level === 'full').map((d) => (
+                  <li key={d.deed} className={d.good ? 'good' : 'bad'}><b>{d.change}</b> {d.deed}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
 export function JournalView({ state }: { state: GameState | null }) {
   const p = state?.party ?? null
   const j = useJournal()
@@ -225,6 +261,7 @@ export function JournalView({ state }: { state: GameState | null }) {
             <Timers p={p} live={state?.source === 'memory'} />
             <Checklist p={p} />
             <Moongates p={p} />
+            <VirtueGuide level={j.journal?.spoilerLevel ?? 'off'} />
           </div>
         </div>
       ) : (
