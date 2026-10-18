@@ -52,6 +52,14 @@ export function recordJournalVisit(location: number): Promise<Journal | null> {
   })
 }
 
+/** Test instance only: start the journal afresh, keeping the hint and dialogue settings. */
+export function resetJournal(): Promise<Journal> {
+  return enqueue(async () => {
+    current ??= await loadJournal()
+    return write({ ...emptyJournal(), spoilerLevel: current.spoilerLevel, dialogueMode: current.dialogueMode })
+  })
+}
+
 /** Record someone the party talked to; resolves to the updated journal, or null when already known. */
 export function recordJournalMet(location: number, name: string): Promise<Journal | null> {
   return enqueue(async () => {

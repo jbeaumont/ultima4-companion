@@ -9,7 +9,7 @@ import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@share
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
 import { getDungeonFog, getExplored, loadDungeonFog, loadExplored, resetDungeonFog, resetExplored, trackExplored } from './explored'
 import { toggleHud } from './hud'
-import { loadJournal, recordJournalMet, recordJournalVisit, saveJournal } from './journal'
+import { loadJournal, recordJournalMet, recordJournalVisit, resetJournal, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
 import { setupSavesIpc } from './saves/savesIpc'
 import { setupSageIpc } from './sage/sageIpc'
@@ -191,6 +191,12 @@ export async function setupIpc(): Promise<void> {
       }
     }
     await startSource()
+    return { ok: true }
+  })
+
+  ipcMain.handle(IPC.resetTestJournal, async (): Promise<{ ok: boolean }> => {
+    if (!TEST_MODE) return { ok: false } // never wipe a player's journal
+    send(IPC.journalChanged, await resetJournal())
     return { ok: true }
   })
 

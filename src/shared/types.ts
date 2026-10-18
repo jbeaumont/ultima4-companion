@@ -60,6 +60,7 @@ export const IPC = {
   setSageEnabled: 'settings:sageEnabled',
   launchGame: 'launcher:launch',
   seedTestSaves: 'launcher:seedTest',
+  resetTestJournal: 'journal:resetTest',
   snapshotsList: 'snapshots:list',
   snapshotsTake: 'snapshots:take',
   snapshotsRestore: 'snapshots:restore',

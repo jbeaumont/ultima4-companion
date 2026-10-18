@@ -51,6 +51,7 @@ async function main(): Promise<void> {
   const names = s0.allRecords.slice(0, Math.max(1, s0.memberCount)).map((r) => r.name)
 
   const c = await Companion.connect()
+  await c.freshJournal() // checks must not pass on an earlier run's journal
   const capture = async (tag: string, views: string[]) => {
     const texts: Record<string, string> = {}
     for (const v of views) {

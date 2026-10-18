@@ -52,6 +52,7 @@ async function main(): Promise<void> {
   log('test save: Honesty 99, Compassion 30, meditation ready, at the castle gate')
 
   const c = await Companion.connect()
+  await c.freshJournal() // checks must not pass on an earlier run's journal
   const capture = async (tag: string, views: string[]) => {
     const texts: Record<string, string> = {}
     for (const v of views) {
