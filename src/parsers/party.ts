@@ -38,7 +38,7 @@ export interface PartySave {
   reagents: number[] // 8
   mixtures: number[] // 26
   items: number // 16-bit flag word, see ITEM_FLAGS
-  x: number
+  x: number // surface, settlement or dungeon position depending on location
   y: number
   stones: number // bitfield
   runes: number // bitfield
@@ -52,8 +52,9 @@ export interface PartySave {
   lastReagent: number
   lastMeditation: number
   lastVirtueTalk: number
-  dungeonX: number
-  dungeonY: number
+  /** Surface position to return to when inside a town or dungeon (u4-decompiled out_x/out_y). */
+  outX: number
+  outY: number
   orientation: number
   dungeonLevel: number // 0xFFFF on the surface
   location: number // see LOCATIONS; 0 = surface
@@ -118,8 +119,8 @@ export function parsePartySav(buf: Uint8Array): PartySave {
     lastReagent: r.u16(0x1e8),
     lastMeditation: r.u16(0x1ea),
     lastVirtueTalk: r.u16(0x1ec),
-    dungeonX: r.u8(0x1ee),
-    dungeonY: r.u8(0x1ef),
+    outX: r.u8(0x1ee),
+    outY: r.u8(0x1ef),
     orientation: r.u16(0x1f0),
     dungeonLevel: r.u16(0x1f2),
     location: r.u16(0x1f4)

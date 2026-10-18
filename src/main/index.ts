@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
+import { closeHud } from './hud'
 import { setupIpc } from './ipc'
 
 function createWindow(): void {
@@ -15,6 +16,8 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  win.on('closed', closeHud) // the HUD must not keep the app alive
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])

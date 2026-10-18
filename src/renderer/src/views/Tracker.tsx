@@ -164,6 +164,11 @@ function StatusBar({ state }: { state: GameState | null }) {
   const msg = !state ? 'Loading…' : state.status === 'ok' ? null : state.message ?? state.status
   return (
     <div className={`statusbar ${state?.status ?? ''}`}>
+      {state && (
+        <span className={`source-badge ${state.source === 'memory' ? 'live' : ''}`}>
+          {state.source === 'memory' ? 'LIVE · memory' : 'Save file'}
+        </span>
+      )}
       <span className="path">{state?.savePath ?? state?.gameDir ?? 'No save file'}</span>
       {age !== null && <span>updated {age} s ago</span>}
       {msg && <span className="msg">{msg}</span>}
