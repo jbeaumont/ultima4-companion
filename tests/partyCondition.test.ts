@@ -3,7 +3,7 @@ import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import type { PartySave } from '@parsers/party'
 import { lordBritishMaxHp, partyAlerts } from '../src/domain/partyCondition'
 
-const base = parsePartySav(new Uint8Array(PARTY_SAV_SIZE))
+const base = { ...parsePartySav(new Uint8Array(PARTY_SAV_SIZE)), food: 30000 }
 const member = (over: Partial<PartySave['members'][number]>) => ({ ...base.allRecords[0]!, ...over })
 
 describe('partyAlerts', () => {
@@ -31,5 +31,12 @@ describe('partyAlerts', () => {
     expect([0, 99, 100, 199, 200, 450, 6400, 9999].map(lordBritishMaxHp)).toEqual([100, 100, 200, 200, 300, 400, 800, 800])
     const ready = partyAlerts({ ...p, members: [member({ name: 'Danny', status: 'G', hp: 200, hpMax: 200, xp: 450 })] })
     expect(ready).toEqual([{ level: 'good', text: 'Danny can reach level 4', hint: expect.stringMatching(/Lord British/) }])
+  })
+
+  it('warns about food by moves left (one unit per member per turn) and when starving', () => {
+    const two = { ...p, members: [member({ status: 'G', hp: 200, hpMax: 200, xp: 0 }), member({ status: 'G', hp: 200, hpMax: 200, xp: 0 })], memberCount: 2 }
+    expect(partyAlerts({ ...two, food: 400 }).map((a) => a.text)).toEqual(['Food for 200 moves'])
+    expect(partyAlerts({ ...two, food: 0 })[0]).toMatchObject({ level: 'bad', text: 'Starving!' })
+    expect(partyAlerts({ ...two, food: 5000 })).toEqual([])
   })
 })
