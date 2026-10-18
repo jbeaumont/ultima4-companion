@@ -42,9 +42,29 @@ export interface CombatView {
   exit: { x?: number; y?: number } | null
   /** Side to leave by when free to choose (e.g. onward along a dungeon route). */
   prefer?: Dir
+  /** Party health and the caster's magic, to cast Cure, Heal or Magic Missile (omit to only fight). */
+  support?: {
+    members: { hp: number; hpMax: number; status: string }[]
+    /** The active member's magic points. */
+    mp: number
+    /** Mixtures carried, by spell letter index (A = 0). */
+    mixtures: number[]
+  }
 }
 
-export type CombatAction = { kind: 'attack'; dir: Dir } | { kind: 'move'; dir: Dir } | { kind: 'pass' }
+export type CombatAction =
+  | { kind: 'attack'; dir: Dir }
+  | { kind: 'move'; dir: Dir }
+  | { kind: 'pass' }
+  /** C, the spell letter, then the member's number (Cure, Heal) or a direction (Magic Missile). */
+  | { kind: 'cast'; spell: 'cure' | 'heal' | 'missile'; who?: number; dir?: Dir }
+
+// spell letters and magic point costs (U4_SPELL.C D_208C)
+export const SPELL_CAST = {
+  cure: { letter: 'c', index: 2, mp: 5 },
+  heal: { letter: 'h', index: 7, mp: 10 },
+  missile: { letter: 'm', index: 12, mp: 5 }
+} as const
 
 const STEPS: [Dir, number, number][] = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]]
 const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < COMBAT_SIZE && y < COMBAT_SIZE
@@ -86,6 +106,31 @@ function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null): D
   return null
 }
 
+/**
+ * A spell worth casting this turn, if the party carries the mixture and the
+ * caster has the magic (a cast without enough MP still uses up the mixture):
+ * Cure a poisoned member, Heal one below a third of their HP, or fire a Magic
+ * Missile at a foe in line when nothing is in weapon reach.
+ */
+function supportSpell(v: CombatView, me: Point): CombatAction | null {
+  const s = v.support!
+  const can = (spell: keyof typeof SPELL_CAST) => (s.mixtures[SPELL_CAST[spell].index] ?? 0) > 0 && s.mp >= SPELL_CAST[spell].mp
+  const alive = (i: number) => s.members[i] && s.members[i]!.status !== 'D'
+  if (can('heal')) {
+    const hurt = s.members.findIndex((m, i) => alive(i) && m.hpMax > 0 && m.hp * 3 < m.hpMax)
+    if (hurt >= 0) return { kind: 'cast', spell: 'heal', who: hurt }
+  }
+  if (can('cure')) {
+    const sick = s.members.findIndex((m, i) => alive(i) && m.status === 'P')
+    if (sick >= 0) return { kind: 'cast', spell: 'cure', who: sick }
+  }
+  if (can('missile') && v.monsters.length && !attackDir(v, me)) {
+    const dir = attackDir({ ...v, reach: [1, 10] }, me)
+    if (dir) return { kind: 'cast', spell: 'missile', dir }
+  }
+  return null
+}
+
 /** The step that leaves the map from (x, y), if leaving that way is allowed. */
 function exitDir(v: CombatView, x: number, y: number): Dir | null {
   const ok = (ex: number | undefined, ey: number | undefined) => {
@@ -108,6 +153,8 @@ function exitDir(v: CombatView, x: number, y: number): Dir | null {
 export function planCombatTurn(v: CombatView, goal: 'fight' | 'flee' = 'fight'): CombatAction {
   const me = v.party[v.me]
   if (!me) return { kind: 'pass' }
+  const support = v.support ? supportSpell(v, me) : null
+  if (support) return support
   if (goal === 'fight' && v.monsters.length) {
     const dir = attackDir(v, me)
     if (dir) return { kind: 'attack', dir }
