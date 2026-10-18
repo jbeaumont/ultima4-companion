@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGameState } from './useGameState'
+import { Dashboard } from './views/Dashboard'
 import { Dialogue } from './views/Dialogue'
 import { Editor } from './views/Editor'
 import { Gallery } from './views/Gallery'
@@ -11,11 +12,11 @@ import { Settings } from './views/Settings'
 import { Snapshots } from './views/Snapshots'
 import { Tracker } from './views/Tracker'
 
-const VIEWS = ['Tracker', 'Map', 'Journal', 'Hints', 'Sage', 'Dialogue', 'Gallery', 'Snapshots', 'Editor', 'Settings'] as const
+const VIEWS = ['Dashboard', 'Tracker', 'Map', 'Journal', 'Hints', 'Sage', 'Dialogue', 'Gallery', 'Snapshots', 'Editor', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
-  const [view, setView] = useState<View>('Tracker')
+  const [view, setView] = useState<View>('Dashboard')
   const [state, setState] = useGameState()
   const [sageOn, setSageOn] = useState(false)
   const [testMode, setTestMode] = useState(false)
@@ -74,7 +75,9 @@ export function App() {
             <Sage onNavigate={setView} />
           </div>
         )}
-        {view === 'Tracker' ? (
+        {view === 'Dashboard' ? (
+          <Dashboard state={state} onNavigate={setView} />
+        ) : view === 'Tracker' ? (
           <Tracker state={state} />
         ) : view === 'Map' ? (
           <MapView state={state} />
