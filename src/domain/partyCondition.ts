@@ -3,7 +3,7 @@
 import type { PartySave } from '../parsers/party'
 import { SPELLS } from './constants'
 
-export type AlertLevel = 'warn' | 'bad'
+export type AlertLevel = 'good' | 'warn' | 'bad'
 
 export interface PartyAlert {
   level: AlertLevel
@@ -13,6 +13,16 @@ export interface PartyAlert {
 }
 
 const mixture = (p: PartySave, spell: string) => p.mixtures[SPELLS.indexOf(spell as (typeof SPELLS)[number])] ?? 0
+
+/**
+ * Max HP Lord British would grant for this much experience (U4_LB.C C_E4C3):
+ * 100 per level, level 2 at 100 XP and each further level at double the XP.
+ */
+export function lordBritishMaxHp(xp: number): number {
+  let hp = 100
+  for (let need = 100; need <= xp; need <<= 1) hp += 100
+  return hp
+}
 
 /** Health alerts, most serious first. Low HP is below a third (bad below a fifth). */
 export function partyAlerts(p: PartySave): PartyAlert[] {
@@ -40,5 +50,12 @@ export function partyAlerts(p: PartySave): PartyAlert[] {
       })
     }
   }
-  return out.sort((a, b) => (a.level === b.level ? 0 : a.level === 'bad' ? -1 : 1))
+  for (const m of p.members) {
+    const hp = lordBritishMaxHp(m.xp)
+    if (m.status !== 'D' && m.hpMax < hp) {
+      out.push({ level: 'good', text: `${m.name} can reach level ${hp / 100}`, hint: 'Visit Lord British: he raises thy level and restores thy health' })
+    }
+  }
+  const rank = { bad: 0, warn: 1, good: 2 }
+  return out.sort((a, b) => rank[a.level] - rank[b.level])
 }

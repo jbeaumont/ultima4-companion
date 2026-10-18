@@ -3,10 +3,9 @@
 // Use only with the turbo test profile (see CLAUDE.md, Play-testing).
 import { PARTY_SAV_SIZE, parsePartySav } from '../../src/parsers/party'
 import type { PartySave } from '../../src/parsers/party'
-import { parseUlt } from '../../src/parsers/town'
 import { parseWorldMap, WORLD_SIZE } from '../../src/parsers/worldMap'
-import { LOCATIONS } from '../../src/domain/constants'
 import { findRoute } from '../../src/domain/pathfind'
+import { stepCost } from '../../src/domain/walkable'
 import type { Dir, Grid } from '../../src/domain/pathfind'
 import { planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
 import { BATTLE_DS, parseBattle } from '../../src/parsers/battle'
@@ -27,7 +26,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // block found in memory is `Party` at DS:9144, which gives the segment base.
 const DS = {
   ...BATTLE_DS,
-  dungeonMap: 0x8742, // D_8742._map.x8x8x8[z][y][x] while in a dungeon
+  dungeonMap: 0x8742, // D_8742._map: x8x8x8[z][y][x] in a dungeon, x32x32 in a town
   activeCharaX: 0x080a, // -1 except while a member's command is being taken
   roomExitX: 0x96ee,
   roomExitY: 0x96f4
@@ -162,33 +161,35 @@ export class GameDriver {
     return { before, after: this.state(), changed: false }
   }
 
-  /** The walkable grid for the current map (world, or the current town). */
+  /** The walkable grid for the current map: the world, or the town map the game has loaded (any floor, doors as they are now). */
   private grid(location: number): Grid {
-    const cached = this.grids.get(location)
-    if (cached) return cached
-    let g: Grid
-    if (location === 0) {
-      const w = parseWorldMap(new Uint8Array(readFileSync(join(this.gameDir, 'WORLD.MAP'))))
-      g = { width: WORLD_SIZE, height: WORLD_SIZE, wrap: true, tileAt: (x, y) => w[y * WORLD_SIZE + x]! }
-    } else {
-      const file = LOCATIONS[location]?.file
-      if (!file?.endsWith('.ULT')) throw new DriverError(`No walking map for location ${location}`)
-      const t = parseUlt(new Uint8Array(readFileSync(join(this.gameDir, file)))).tiles
-      g = { width: 32, height: 32, wrap: false, tileAt: (x, y) => t[y * 32 + x]! }
+    if (location !== 0) {
+      const t = this.ds(DS.dungeonMap, 32 * 32) // D_8742._map.x32x32 while in a town or castle
+      return { width: 32, height: 32, wrap: false, tileAt: (x, y) => t[y * 32 + x]! }
     }
-    this.grids.set(location, g)
+    const cached = this.grids.get(0)
+    if (cached) return cached
+    const w = parseWorldMap(new Uint8Array(readFileSync(join(this.gameDir, 'WORLD.MAP'))))
+    const g: Grid = { width: WORLD_SIZE, height: WORLD_SIZE, wrap: true, tileAt: (x, y) => w[y * WORLD_SIZE + x]! }
+    this.grids.set(0, g)
     return g
   }
 
   /** Walk to (tx, ty) on the current map, re-routing around anything that blocks us. */
   async walkTo(tx: number, ty: number, maxSteps = 400): Promise<PartySave> {
     const blocked = new Map<string, number>() // cell -> step it was blocked at
+    const fails = new Map<string, number>() // consecutive refused steps per cell
     for (let step = 0; step < maxSteps; step++) {
       const s = this.state()
       if (s.x === tx && s.y === ty) return s
       for (const [k, at] of blocked) if (step - at > 8) blocked.delete(k) // people move on
-      const route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { blocked: new Set(blocked.keys()) })
-      if (!route?.length) throw new DriverError(`No route from ${s.x},${s.y} to ${tx},${ty} in location ${s.location}`)
+      let route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { blocked: new Set(blocked.keys()) })
+      if (!route?.length && blocked.size) {
+        // whatever blocked us (a monster, a person) has probably moved: forget it and try again
+        blocked.clear()
+        route = findRoute(this.grid(s.location), s.x, s.y, tx, ty)
+      }
+      if (!route?.length) throw new DriverError(`No route from ${s.x},${s.y} to ${tx},${ty} in location ${s.location} (avoiding ${[...blocked.keys()].join(" ") || "nothing"})`)
       const dir: Dir = route[0]!
       const r = await this.press(dir)
       if (r.after.location !== s.location) throw new DriverError(`Left the map while walking (now location ${r.after.location})`)
@@ -197,7 +198,13 @@ export class GameDriver {
         const g = this.grid(s.location)
         const nx = g.wrap ? (s.x + dx + g.width) % g.width : s.x + dx
         const ny = g.wrap ? (s.y + dy + g.height) % g.height : s.y + dy
-        blocked.set(`${nx},${ny}`, step)
+        // slow ground (brush, forest, hills, swamp) refuses steps at random: retry before routing around it
+        const k = `${nx},${ny}`
+        const tries = (fails.get(k) ?? 0) + 1
+        fails.set(k, tries)
+        if ((stepCost(g.tileAt(nx, ny)) ?? 1) <= 1 || tries >= 4) blocked.set(k, step)
+      } else {
+        fails.clear()
       }
     }
     throw new DriverError(`Gave up walking to ${tx},${ty}`)
@@ -208,6 +215,27 @@ export class GameDriver {
     const r = await this.press('e')
     if (r.after.location === 0) throw new DriverError('Enter did nothing (not standing on an entrance?)')
     return r.after
+  }
+
+  /** Type a line of text (letters and digits) and press Enter, for prompts that read a word. */
+  async type(text: string, enter = true): Promise<void> {
+    for (const ch of text.toLowerCase()) {
+      this.key(ch === ' ' ? 'space' : ch)
+      await sleep(40)
+    }
+    if (enter) this.key('enter')
+    await sleep(100)
+  }
+
+  /** Wait until `test` holds for the live party state. */
+  async waitFor(test: (s: PartySave) => boolean, timeoutMs: number, what = 'condition'): Promise<PartySave> {
+    const until = Date.now() + timeoutMs
+    while (Date.now() < until) {
+      const s = this.state()
+      if (test(s)) return s
+      await sleep(50)
+    }
+    throw new DriverError(`Timed out waiting for ${what}`)
   }
 
   async search(): Promise<PartySave> {
