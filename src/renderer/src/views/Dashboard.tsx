@@ -7,6 +7,7 @@ import { HINTS, suggestedTopics, visibleTiers } from '@domain/hints'
 import type { SpoilerLevel } from '@domain/hints'
 import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
+import { elevationSteps } from '@domain/elevation'
 import { partyAlerts } from '@domain/partyCondition'
 import { progress } from '@domain/progress'
 import { canSaveHere } from '@domain/unsaved'
@@ -111,12 +112,28 @@ function Quest({ p }: { p: PartySave }) {
 }
 
 function Next({ p, nudges, onOpen }: { p: PartySave; nudges: boolean; onOpen: () => void }) {
-  const topics = suggestedTopics(progress(p), p.location).slice(0, 3)
+  // a virtue at 99 is the most valuable thing to do next: lead with it
+  const ready = elevationSteps(p)
+  const topics = suggestedTopics(progress(p), p.location)
+    .filter((t) => !(ready.length && t.id === 'avatarhood'))
+    .slice(0, Math.max(1, 3 - ready.length))
   return (
     <section className="panel d-next">
       <h3>Suggested next</h3>
-      {topics.length === 0 ? <p className="muted small">Nothing to suggest right now.</p> : (
+      {topics.length === 0 && ready.length === 0 ? <p className="muted small">Nothing to suggest right now.</p> : (
         <ul>
+          {ready.map((e) => (
+            <li key={e.virtue}>
+              <button className="d-topic d-elevate" onClick={onOpen}>
+                Elevation in {e.virtue}
+                <small>
+                  Meditate 3 cycles at the Shrine of {e.virtue}.{' '}
+                  {e.hasRune ? 'You hold its rune.' : `You need the Rune of ${e.virtue} to enter.`}{' '}
+                  {e.note ?? ''}
+                </small>
+              </button>
+            </li>
+          ))}
           {topics.map((t) => (
             <li key={t.id}>
               <button className="d-topic" onClick={onOpen}>
