@@ -4,7 +4,7 @@
 import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import type { GameState } from '@shared/types'
 import { findPartyBlocks, looksLikeParty, pickLive } from './scan'
-import { ProcessReader, findPids, memorySupported } from './win32'
+import { ProcessReader, dosboxProcesses, memorySupported } from './win32'
 
 const POLL_MS = 250
 const RESCAN_MS = 3000
@@ -27,10 +27,13 @@ export class MemorySource {
   /**
    * @param names party names from the latest save, to search for quickly; may be empty
    * @param base fields copied into every emitted state (gameDir, savePath)
+   * @param accept which DOSBox processes (by command line) this instance may attach to,
+   *   so a normal companion never reads a test game and vice versa
    */
   constructor(
     private readonly names: () => string[],
-    private readonly base: () => Pick<GameState, 'gameDir' | 'savePath'>
+    private readonly base: () => Pick<GameState, 'gameDir' | 'savePath'>,
+    private readonly accept: (commandLine: string) => boolean = () => true
   ) {}
 
   /** Emits live states while attached, and null whenever it is not attached. */
@@ -88,7 +91,8 @@ export class MemorySource {
   }
 
   private async attach(): Promise<void> {
-    for (const pid of await findPids('dosbox.exe')) {
+    for (const { pid, commandLine } of await dosboxProcesses()) {
+      if (!this.accept(commandLine)) continue
       const reader = ProcessReader.open(pid)
       if (!reader) continue
       const found = scanProcess(reader, this.names())

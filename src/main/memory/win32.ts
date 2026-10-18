@@ -42,6 +42,29 @@ function load() {
 
 export const memorySupported = process.platform === 'win32'
 
+export interface ProcessInfo {
+  pid: number
+  commandLine: string
+}
+
+/** Running DOSBox processes with their command lines (to tell play and test games apart). */
+export function dosboxProcesses(): Promise<ProcessInfo[]> {
+  return new Promise((resolve) => {
+    if (!memorySupported) return resolve([])
+    const script = "Get-CimInstance Win32_Process -Filter \"Name='DOSBox.exe'\" | ForEach-Object { '' + $_.ProcessId + '|' + $_.CommandLine }"
+    execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 8000 }, (err, out) => {
+      if (err) return resolve([])
+      resolve(out.split(/\r?\n/).filter(Boolean).map((l) => {
+        const i = l.indexOf('|')
+        return { pid: Number(l.slice(0, i)), commandLine: l.slice(i + 1) }
+      }).filter((p) => p.pid > 0))
+    })
+  })
+}
+
+/** A DOSBox started by the companion's test launch profile. */
+export const isTestDosbox = (commandLine: string): boolean => /dosbox-test\.conf/i.test(commandLine)
+
 /** PIDs of running processes with this image name (e.g. dosbox.exe). */
 export function findPids(image: string): Promise<number[]> {
   return new Promise((resolve) => {

@@ -10,7 +10,7 @@ import { findRoute } from '../../src/domain/pathfind'
 import type { Dir, Grid } from '../../src/domain/pathfind'
 import { looksLikeParty } from '../../src/main/memory/scan'
 import { scanProcess } from '../../src/main/memory/memorySource'
-import { ProcessReader, findPids } from '../../src/main/memory/win32'
+import { ProcessReader, dosboxProcesses, isTestDosbox } from '../../src/main/memory/win32'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { findDosboxWindow, focusByClick, foregroundTitle, postKey, processHasFocus } from './input'
@@ -36,12 +36,13 @@ export class GameDriver {
   static async attach(gameDir: string, names: string[], timeoutMs = 20000): Promise<GameDriver> {
     const until = Date.now() + timeoutMs
     while (Date.now() < until) {
-      const [pid] = await findPids('dosbox.exe')
+      // only ever drive the test game, even if the player's game is open too
+      const pid = (await dosboxProcesses()).find((p) => isTestDosbox(p.commandLine))?.pid
       const hwnd = pid ? findDosboxWindow(pid) : null
       if (pid && hwnd) return new GameDriver(pid, gameDir, names)
       await sleep(250)
     }
-    throw new DriverError('No DOSBox window found')
+    throw new DriverError('No test DOSBox window found')
   }
 
   /**

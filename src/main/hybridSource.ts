@@ -3,6 +3,8 @@
 import type { GameState, StateSource } from '@shared/types'
 import { unsavedMoves } from '@domain/unsaved'
 import { MemorySource } from './memory/memorySource'
+import { isTestDosbox } from './memory/win32'
+import { TEST_MODE } from './mode'
 import { SaveFileSource } from './saveFileSource'
 
 export class HybridSource implements StateSource {
@@ -18,7 +20,9 @@ export class HybridSource implements StateSource {
     this.memory = liveMemory
       ? new MemorySource(
           () => (this.fileState?.party ? this.fileState.party.allRecords.slice(0, this.fileState.party.memberCount || 1).map((r) => r.name) : []),
-          () => ({ gameDir, savePath: this.fileState?.savePath ?? null })
+          () => ({ gameDir, savePath: this.fileState?.savePath ?? null }),
+          // a test instance reads only test games; a normal one never does
+          (cmd) => isTestDosbox(cmd) === TEST_MODE
         )
       : null
   }

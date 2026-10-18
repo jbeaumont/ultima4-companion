@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { parsePartySav } from '../../../src/parsers/party'
 import { encodePartySav } from '../../../src/parsers/partyWriter'
 import { launchGame } from '../../../src/main/launcher'
-import { findPids } from '../../../src/main/memory/win32'
+import { dosboxProcesses, isTestDosbox } from '../../../src/main/memory/win32'
 import { GameDriver } from '../driver'
 
 const GAME = process.env['U4_DIR'] ?? 'C:\\Program Files\\GOG Galaxy\\Games\\Ultima 4'
@@ -18,7 +18,7 @@ const t0 = Date.now()
 const log = (m: string) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${m}`)
 
 async function main(): Promise<void> {
-  if ((await findPids('dosbox.exe')).length) throw new Error('Close DOSBox first (the scenario launches its own test game)')
+  if ((await dosboxProcesses()).some((p) => isTestDosbox(p.commandLine))) throw new Error('A test game is already running; close it first')
 
   // 1. test save = real save without the Rune of Honesty (read-only on the real save)
   mkdirSync(OVERLAY, { recursive: true })

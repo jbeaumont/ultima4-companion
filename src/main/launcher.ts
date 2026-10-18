@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { findPids } from './memory/win32'
+import { dosboxProcesses, isTestDosbox } from './memory/win32'
 
 export type LaunchProfile = 'play' | 'test'
 
@@ -57,7 +57,11 @@ export async function launchGame(o: LaunchOptions): Promise<{ pid: number | unde
   const exe = join(dosboxDir, 'dosbox.exe')
   const baseConf = join(o.gameDir, 'dosboxULTIMA4.conf')
   if (!existsSync(exe) || !existsSync(baseConf)) throw new LaunchRefused('DOSBox from the GOG install was not found.')
-  if ((await findPids('dosbox.exe')).length) throw new LaunchRefused('DOSBox is already running.')
+  // a test game may run alongside the player's game, but not two of the same kind
+  const running = await dosboxProcesses()
+  if (running.some((p) => isTestDosbox(p.commandLine) === (o.profile === 'test'))) {
+    throw new LaunchRefused(o.profile === 'test' ? 'A test game is already running.' : 'DOSBox is already running.')
+  }
 
   await mkdir(o.overlayDir, { recursive: true })
   await mkdir(o.confDir, { recursive: true })
