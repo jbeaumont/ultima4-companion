@@ -70,6 +70,8 @@ async function main(): Promise<void> {
   const a = await capture('1-before', ['Dashboard', 'Journal'])
   expect(/meditate|Elevation|ready/i.test(a['Dashboard']!.slice(a['Dashboard']!.indexOf('THE EIGHT VIRTUES'), a['Dashboard']!.indexOf('QUEST OF'))), 'virtue cards say Honesty is ready for Elevation, as Hawkwind will')
 
+  expect(/SUGGESTED NEXT\s*Elevation in Honesty/i.test(a['Dashboard']!), 'Suggested next leads with Elevation in Honesty (#29)')
+
   await d.enter()
   let s = await d.walkTo(9, 24)
   log(`above the counter at ${s.x},${s.y}`)
