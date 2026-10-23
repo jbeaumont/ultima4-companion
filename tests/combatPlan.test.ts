@@ -78,6 +78,14 @@ describe('planCombatTurn', () => {
 })
 
 describe('room triggers', () => {
+  it('waits for a party member on a one-wide way out instead of taking another side', () => {
+    // a corridor at x=5 leads north; Danny stands in it, Iolo waits below
+    const v = view({ room: true, party: [{ x: 5, y: 3 }, { x: 5, y: 6 }], me: 1, prefer: 'up' }, 0x7f)
+    for (let y = 0; y <= 10; y++) v.map[y * COMBAT_SIZE + 5] = 0x16
+    for (let x = 0; x <= 10; x++) v.map[6 * COMBAT_SIZE + x] = 0x16 // an open row to the west and east edges
+    expect(planCombatTurn(v)).toEqual({ kind: 'pass' })
+  })
+
   it('steps on a trigger when the preferred side is closed', () => {
     const v = view({ room: true, party: [{ x: 5, y: 8 }], prefer: 'up', triggers: [{ x: 3, y: 8 }] }, 0x16)
     for (let x = 0; x < COMBAT_SIZE; x++) v.map[x] = 0x7f // north edge closed

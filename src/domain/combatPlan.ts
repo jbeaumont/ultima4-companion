@@ -86,9 +86,10 @@ function attackDir(v: CombatView, from: Point): Dir | null {
 }
 
 /** Breadth-first search from the active member; returns the first step towards the nearest cell satisfying `goal`. */
-function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null): Dir | null {
+function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null, throughFriends = false): Dir | null {
   const me = v.party[v.me]!
-  const occupied = new Set([...v.monsters, ...v.party.filter((p): p is Point => !!p)].map((p) => `${p.x},${p.y}`))
+  const blockers = throughFriends ? v.monsters : [...v.monsters, ...v.party.filter((p): p is Point => !!p)]
+  const occupied = new Set(blockers.map((p) => `${p.x},${p.y}`))
   const seen = new Map<string, Dir | null>([[`${me.x},${me.y}`, null]])
   const queue: Point[] = [me]
   while (queue.length) {
@@ -168,6 +169,9 @@ export function planCombatTurn(v: CombatView, goal: 'fight' | 'flee' = 'fight'):
     if (want(me.x, me.y)) return { kind: 'move', dir: v.prefer }
     const step = firstStep(v, want)
     if (step) return { kind: 'move', dir: step }
+    // a party member may be in the way (a one-wide bridge, a doorway): wait for them rather than pick another side
+    const around = firstStep(v, want, true)
+    if (around) return { kind: 'pass' }
     // the side we want is closed: a trigger may open it
     if (v.triggers?.length) {
       const toTrigger = firstStep(v, (x, y) => (v.triggers!.some((t) => t.x === x && t.y === y) ? 'up' : null))
