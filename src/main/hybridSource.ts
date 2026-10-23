@@ -13,6 +13,8 @@ export class HybridSource implements StateSource {
   private fileState: GameState | null = null
   private memState: GameState | null = null
   private onState: (s: GameState) => void = () => {}
+  /** Whether live memory was ever attached: a later save-file state is then a fallback, not the normal view. */
+  private wasLive = false
 
   /** @param onFile called with every save-file state, even while live memory is shown (used for snapshots) */
   constructor(gameDir: string | null, liveMemory: boolean, private readonly onFile?: (s: GameState) => void, overlayDir?: string) {
@@ -32,14 +34,15 @@ export class HybridSource implements StateSource {
     this.file.start((s) => {
       this.fileState = s
       this.onFile?.(s)
-      if (!this.memState) return onState(s)
+      if (!this.memState) return onState(this.fromFile()!) // fileState was just set
       // a new save changes how much live progress is unsaved
       this.memState = { ...this.memState, unsavedMoves: unsavedMoves(this.memState.party, s.party) }
       onState(this.memState)
     })
     this.memory?.start((s) => {
+      if (s) this.wasLive = true
       this.memState = s ? { ...s, unsavedMoves: unsavedMoves(s.party, this.fileState?.party ?? null) } : null
-      const current = this.memState ?? this.fileState
+      const current = this.memState ?? this.fromFile()
       if (current) onState(current)
     })
   }
@@ -49,7 +52,19 @@ export class HybridSource implements StateSource {
   }
 
   getState(): GameState | null {
-    return this.memState ?? this.fileState
+    return this.memState ?? this.fromFile()
+  }
+
+  /** The save-file state, marked as a fallback once live memory has gone away. */
+  private fromFile(): GameState | null {
+    if (!this.fileState) return null
+    const observation = {
+      session: 'save',
+      sequence: 0,
+      observedAt: this.fileState.updatedAt ?? Date.now(),
+      status: this.wasLive ? ('detached' as const) : ('saveFile' as const)
+    }
+    return { ...this.fileState, observation }
   }
 
   attachment() {

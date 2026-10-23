@@ -17,6 +17,8 @@ import { unsavedChip } from '@domain/unsavedChip'
 import { timerLabel } from '@shared/format'
 import type { GameState } from '@shared/types'
 import { differentAvatar } from '@shared/profiles'
+import { sourceLabel } from '@shared/observationLabel'
+import { useNow } from '../useNow'
 import type { Profile } from '@shared/profiles'
 import { BattlePanel } from '../components/BattlePanel'
 import { useDashboardArt } from '../useDashboardArt'
@@ -47,7 +49,8 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
   }, [me?.name])
   const chip = unsavedChip(state.unsavedMoves, canSaveHere(p))
   const g = gateState(p.trammel, p.felucca)
-  const live = state.source === 'memory'
+  const now = useNow(1000)
+  const label = sourceLabel(state, now)
   const alerts = partyAlerts(p)
   return (
     <section className="d-hero">
@@ -71,7 +74,7 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
           <span key={a.text} className={`d-chip unsaved ${a.level}`} title={a.hint}>{a.text} · {a.hint}</span>
         ))}
         {alerts.length > 3 && <span className="d-chip unsaved warn" title={alerts.slice(3).map((a) => a.text).join(', ')}>+{alerts.length - 3} more</span>}
-        <span className={`d-chip${live ? ' live' : ''}`}>{live ? '● LIVE (memory)' : 'Save file'}</span>
+        <span className={`d-chip ${label.level === 'live' ? 'live' : label.level === 'warn' ? 'unsaved warn' : ''}`} title={label.title}>{label.text}</span>
         {chip && <span className={`d-chip unsaved ${chip.level}`} title={chip.hint}>{chip.text} · {chip.hint.split(' · ')[1]}</span>}
         <span className="d-chip">Trammel {PHASE_NAMES[p.trammel & 7]!.toLowerCase()} · Felucca {PHASE_NAMES[p.felucca & 7]!.toLowerCase()}</span>
         <span className="d-chip">Moongate: {g.open.near} → {g.destination.near}</span>
