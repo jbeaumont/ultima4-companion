@@ -26,6 +26,10 @@ Full roadmap: see the "Milestones" section of README.md.
 - PARTY.SAV x,y is the position on the current map (surface, town or dungeon 0-7); 0x1EE/0x1EF are the surface return position (u4-decompiled `out_x/out_y`), not dungeon coords as xu4 FileFormats.md says
 - In memory the game keeps PARTY.SAV byte-for-byte as `struct tParty Party` (0x1F6 bytes, u4-decompiled U4.H)
 
+## Playthroughs
+- The journal and explored-map files belong to the active playthrough profile: `<userData>/profiles/<id>/` (`src/main/profiles.ts`, `profileSession.ts`); `profiles.json` lists them. The first run moved the old files there and kept `*.pre-profiles` copies. Settings, snapshots and the Sage key stay global.
+- Switching (Settings → Playthroughs) writes out the fog, loads the other profile's journal and fog, and reloads the window. Each profile records its Avatar's name; the Dashboard flags a save for a different character.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
