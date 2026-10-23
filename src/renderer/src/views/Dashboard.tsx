@@ -4,14 +4,13 @@ import { CLASSES, ITEM_FLAGS, LOCATIONS, STATUS, STONES, VIRTUES } from '@domain
 import type { ItemName } from '@domain/constants'
 import { COMPANIONS, STATUS_TEXT, companionStatus, joinReadiness } from '@domain/companions'
 import { cooldowns } from '@domain/cooldowns'
-import { HINTS, suggestedTopics, visibleTiers } from '@domain/hints'
+import { HINTS, visibleTiers } from '@domain/hints'
 import type { SpoilerLevel } from '@domain/hints'
 import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
-import { elevationSteps } from '@domain/elevation'
+import { nextSteps } from '@domain/guidance'
 import { hawkwindBand } from '@domain/hawkwind'
 import { partyAlerts } from '@domain/partyCondition'
-import { progress } from '@domain/progress'
 import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import { timerLabel } from '@shared/format'
@@ -128,34 +127,18 @@ function Quest({ p }: { p: PartySave }) {
   )
 }
 
-function Next({ p, nudges, onOpen }: { p: PartySave; nudges: boolean; onOpen: () => void }) {
-  // a virtue at 99 is the most valuable thing to do next: lead with it
-  const ready = elevationSteps(p)
-  const topics = suggestedTopics(progress(p), p.location)
-    .filter((t) => !(ready.length && t.id === 'avatarhood'))
-    .slice(0, Math.max(1, 3 - ready.length))
+function Next({ p, level, onOpen }: { p: PartySave; level: SpoilerLevel; onOpen: () => void }) {
+  const steps = nextSteps(p, level)
   return (
     <section className="panel d-next">
       <h3>Suggested next</h3>
-      {topics.length === 0 && ready.length === 0 ? <p className="muted small">Nothing to suggest right now.</p> : (
+      {steps.length === 0 ? <p className="muted small">Nothing to suggest right now.</p> : (
         <ul>
-          {ready.map((e) => (
-            <li key={e.virtue}>
-              <button className="d-topic d-elevate" onClick={onOpen}>
-                Elevation in {e.virtue}
-                <small>
-                  Meditate 3 cycles at the Shrine of {e.virtue}.{' '}
-                  {e.hasRune ? 'You hold its rune.' : `You need the Rune of ${e.virtue} to enter.`}{' '}
-                  {e.note ?? ''}
-                </small>
-              </button>
-            </li>
-          ))}
-          {topics.map((t) => (
-            <li key={t.id}>
-              <button className="d-topic" onClick={onOpen}>
-                {t.title}
-                {nudges && <small>{t.tiers[0]}</small>}
+          {steps.map((s) => (
+            <li key={s.id}>
+              <button className={`d-topic${s.elevation ? ' d-elevate' : ''}`} onClick={onOpen}>
+                {s.title}
+                {s.detail && <small>{s.detail}</small>}
               </button>
             </li>
           ))}
@@ -273,7 +256,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
       <VirtueCards p={p} art={art} />
       <aside className="d-right">
         <Quest p={p} />
-        <Next p={p} nudges={nudges} onOpen={() => onNavigate('Hints')} />
+        <Next p={p} level={journal ? journal.spoilerLevel : 'off'} onOpen={() => onNavigate('Hints')} />
         <Timers p={p} />
       </aside>
       <Companions p={p} art={art} towns={nudges} />

@@ -70,6 +70,7 @@ A test instance can never touch the player's saves or companion data.
 - Confirmed live: in towns x,y are town coordinates and out_x/out_y the surface return point; DOSBox restarts are reattached automatically; Quit & Save answers "Not Here!" off the surface; the Rune of Honesty hint (town 8,6) works.
 
 ### Hill-climbing the companion
+Verified checkpoints also live as replay fixtures in `tests/replay/` (run anywhere by `npm test`, no game needed); `scripts/replay/capture.ts` turns a live checkpoint into a fixture skeleton. See `tests/replay/README.md`.
 `scripts/hillclimb/` runs a journey with the driver and, at each checkpoint, captures what the test companion shows (view text + screenshots via CDP, `companion.ts` starts `npm run dev:test` if needed), then checks expectations. Review the captures, fix gaps, rerun.
 - `npx tsx scripts/hillclimb/first-rune.ts <outDir>`: outside Moonglow, inside, and after finding the Rune of Honesty (Dashboard, Map, Journal, Hints, Dialogue). About 25 s.
 - `npx tsx scripts/hillclimb/dungeon.ts <outDir>`: Despise on entry, at the start and middle of the room battle, and on level 2 (Dashboard, Map); asserts the companion's battle view matches the game and clears afterwards. About 35 s.
