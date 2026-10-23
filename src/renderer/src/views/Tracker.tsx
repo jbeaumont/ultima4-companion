@@ -8,6 +8,7 @@ import type { ItemName } from '@domain/constants'
 import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import type { GameState } from '@shared/types'
+import { sourceLabel } from '@shared/observationLabel'
 
 import { VirtueRow } from '../components/VirtueRow'
 
@@ -169,7 +170,7 @@ function StatusBar({ state }: { state: GameState | null }) {
     <div className={`statusbar ${state?.status ?? ''}`}>
       {state && (
         <span className={`source-badge ${state.source === 'memory' ? 'live' : ''}`}>
-          {state.source === 'memory' ? 'LIVE · memory' : 'Save file'}
+          {sourceLabel(state, Date.now()).text}
         </span>
       )}
       <span className="path">{state?.savePath ?? state?.gameDir ?? 'No save file'}</span>
