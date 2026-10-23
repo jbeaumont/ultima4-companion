@@ -1,12 +1,13 @@
 import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
+import { profileDir } from './profileSession'
 import { emptyFog, reveal, validFog } from '@domain/fog'
 import { emptyDungeonFog, revealDungeon, validDungeonFog } from '@domain/dungeonFog'
 import type { PartySave } from '@parsers/party'
 
-// Lives in userData, never in the (read-only) game folder.
-const file = () => join(app.getPath('userData'), 'explored.bin')
+// Lives in the active playthrough's folder in userData, never in the (read-only) game folder.
+const file = () => join(profileDir(), 'explored.bin')
 
 const SAVE_MS = 5000
 const PUSH_MS = 500
@@ -82,7 +83,7 @@ export function resetExplored(): Uint8Array {
 }
 
 // --- dungeon cells seen (separate small file, same throttling) ---
-const dngFile = () => join(app.getPath('userData'), 'explored-dungeons.bin')
+const dngFile = () => join(profileDir(), 'explored-dungeons.bin')
 let dng = emptyDungeonFog()
 let dngDirty = false
 let dngTimer: NodeJS.Timeout | null = null
@@ -140,4 +141,34 @@ export function trackExplored(party: PartySave | null): void {
   if (!reveal(bits, x, y)) return
   scheduleSave()
   schedulePush()
+}
+
+/**
+ * Switch playthroughs: write out the current fog, then load the active profile's.
+ * Call `prepareProfileSwitch` before changing the active profile and
+ * `finishProfileSwitch` after.
+ */
+export async function prepareProfileSwitch(): Promise<void> {
+  await flushExplored()
+  if (dngDirty) await writeDungeonFog()
+}
+
+export async function finishProfileSwitch(): Promise<void> {
+  bits = emptyFog()
+  dng = emptyDungeonFog()
+  dirty = dngDirty = false
+  try {
+    const raw = new Uint8Array(await readFile(file()))
+    if (validFog(raw)) bits = raw
+  } catch {
+    // a new playthrough: nothing explored yet
+  }
+  try {
+    const raw = new Uint8Array(await readFile(dngFile()))
+    if (validDungeonFog(raw)) dng = raw
+  } catch {
+    // nothing explored yet
+  }
+  onChanged?.(bits)
+  onDngChanged?.(dng)
 }

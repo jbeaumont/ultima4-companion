@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Playthroughs } from '../components/Playthroughs'
 import type { GameState, SettingsInfo } from '@shared/types'
 import type { SageStatus } from '../../../main/sage/sageIpc'
 
@@ -130,6 +131,7 @@ export function Settings({ state, onState }: Props) {
           Play Ultima IV launches the game windowed beside the companion with your normal saves (no changes to the game folder).
         </p>
       )}
+      <Playthroughs />
       <section className="panel settings">
         <dl>
           <dt>Game folder</dt>

@@ -87,7 +87,7 @@ export function Snapshots() {
   }
 
   const restore = (id: string) => {
-    void act(id, () => window.u4.restoreSnapshot(id), 'Restored. Your previous save was backed up first (see "before restore").')
+    void act(id, () => window.u4.restoreSnapshot(id), 'Restored. Your previous save was backed up first (see "before restore"). Your notes, visits and explored map stay with this playthrough.')
   }
   const remove = (id: string) => { void act(id, () => window.u4.deleteSnapshot(id), 'Deleted.') }
 

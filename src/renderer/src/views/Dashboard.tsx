@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { PartySave } from '@parsers/party'
 import { CLASSES, ITEM_FLAGS, LOCATIONS, STATUS, STONES, VIRTUES } from '@domain/constants'
 import type { ItemName } from '@domain/constants'
@@ -15,6 +16,8 @@ import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import { timerLabel } from '@shared/format'
 import type { GameState } from '@shared/types'
+import { differentAvatar } from '@shared/profiles'
+import type { Profile } from '@shared/profiles'
 import { BattlePanel } from '../components/BattlePanel'
 import { useDashboardArt } from '../useDashboardArt'
 import type { DashboardArt } from '../useDashboardArt'
@@ -38,6 +41,10 @@ function Gem({ i, on }: { i: number; on: boolean }) {
 
 function Hero({ state, p, art }: { state: GameState; p: PartySave; art: DashboardArt | null }) {
   const me = p.allRecords[0]
+  const [playthrough, setPlaythrough] = useState<Profile | undefined>()
+  useEffect(() => {
+    void window.u4.listProfiles().then((i) => setPlaythrough(i.profiles.find((q) => q.id === i.active)))
+  }, [me?.name])
   const chip = unsavedChip(state.unsavedMoves, canSaveHere(p))
   const g = gateState(p.trammel, p.felucca)
   const live = state.source === 'memory'
@@ -55,6 +62,11 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
         <div className="d-sub">{whereLine(p)} · {p.moves} moves</div>
       </div>
       <div className="d-chips">
+        {differentAvatar(playthrough, me?.name) && (
+          <span className="d-chip unsaved warn" title="Start a playthrough for this character in Settings so their notes and map stay separate">
+            This playthrough ({playthrough!.name}) is for {playthrough!.avatar} · Settings → Playthroughs
+          </span>
+        )}
         {alerts.slice(0, 3).map((a) => (
           <span key={a.text} className={`d-chip unsaved ${a.level}`} title={a.hint}>{a.text} · {a.hint}</span>
         ))}

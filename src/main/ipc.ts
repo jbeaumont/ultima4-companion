@@ -7,9 +7,10 @@ import { LZW_IMAGES, RLE_IMAGES } from '@parsers/egaImage'
 import { IPC } from '@shared/types'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import { isGameDir, locateGameDir, pickSavePath } from './gameLocator'
-import { getDungeonFog, getExplored, loadDungeonFog, loadExplored, resetDungeonFog, resetExplored, trackExplored } from './explored'
+import { finishProfileSwitch, getDungeonFog, getExplored, loadDungeonFog, loadExplored, prepareProfileSwitch, resetDungeonFog, resetExplored, trackExplored } from './explored'
+import { profiles } from './profileSession'
 import { toggleHud } from './hud'
-import { loadJournal, recordJournalMet, recordJournalVisit, resetJournal, saveJournal } from './journal'
+import { loadJournal, recordJournalMet, recordJournalVisit, reloadJournal, resetJournal, saveJournal } from './journal'
 import { HybridSource } from './hybridSource'
 import { setupSavesIpc } from './saves/savesIpc'
 import { setupSageIpc } from './sage/sageIpc'
@@ -42,6 +43,8 @@ let lastTalk: GameState['lastTalk'] = null // a new object for each new conversa
 const onState = (state: GameState): void => {
   send(IPC.stateChanged, state)
   trackExplored(state.party)
+  const avatar = state.party?.allRecords[0]?.name
+  if (avatar) void profiles().noteAvatar(avatar).catch(() => undefined)
   const loc = state.party?.location
   if (loc === undefined || loc < 1 || loc > 16) return
   recordJournalVisit(loc).then((j) => j && send(IPC.journalChanged, j), () => undefined)
@@ -66,6 +69,26 @@ const readAll = async (dir: string, files: Record<string, string>): Promise<Reco
 }
 
 export async function setupIpc(): Promise<void> {
+  // the active playthrough decides where the journal and explored map live, so load it first
+  await profiles().init()
+  ipcMain.handle(IPC.profilesList, () => profiles().list())
+  ipcMain.handle(IPC.profileCreate, async (_e, name: unknown) => {
+    await profiles().create(typeof name === 'string' ? name : '')
+    return profiles().list()
+  })
+  ipcMain.handle(IPC.profileSwitch, async (_e, id: unknown) => {
+    if (typeof id !== 'string' || id === profiles().active().id) return profiles().list()
+    await prepareProfileSwitch()
+    await profiles().switchTo(id)
+    await finishProfileSwitch()
+    send(IPC.journalChanged, await reloadJournal())
+    return profiles().list()
+  })
+  ipcMain.handle(IPC.profileRename, async (_e, id: unknown, name: unknown) => {
+    if (typeof id === 'string' && typeof name === 'string') await profiles().rename(id, name)
+    return profiles().list()
+  })
+
   ipcMain.handle(IPC.getState, (): GameState | null => source?.getState() ?? null)
 
   ipcMain.handle(IPC.getSettings, (): SettingsInfo => ({

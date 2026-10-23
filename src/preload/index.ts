@@ -1,3 +1,4 @@
+import type { ProfileIndex } from '@shared/profiles'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PartySave } from '@parsers/party'
 import type { SavesResult } from '../main/saves/savesIpc'
@@ -35,6 +36,11 @@ const api = {
   },
   /** Test instance only: an empty journal (keeps the hint level), for hill-climb journeys. */
   resetTestJournal: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.resetTestJournal),
+  /** Playthrough profiles: each has its own journal and explored map. Switching reloads the window. */
+  listProfiles: (): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profilesList),
+  createProfile: (name: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileCreate, name),
+  switchProfile: (id: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileSwitch, id),
+  renameProfile: (id: string, name: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileRename, id, name),
   seedTestSaves: (from: 'real' | 'empty'): Promise<{ ok: true } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.seedTestSaves, from),
   listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),
   takeSnapshot: (label?: string): Promise<SavesResult<SnapshotMeta | null>> => ipcRenderer.invoke(IPC.snapshotsTake, label),

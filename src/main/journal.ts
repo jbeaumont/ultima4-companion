@@ -1,12 +1,12 @@
 import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { app } from 'electron'
+import { profileDir } from './profileSession'
 import { recordVisit } from '@domain/hints'
 import { emptyJournal, mergeMet, mergeVisited, metKey, normalizeJournal, parseJournal } from '@shared/journal'
 import type { Journal } from '@shared/journal'
 
-// Lives in userData, never in the (read-only) game folder.
-const file = () => join(app.getPath('userData'), 'journal.json')
+// Lives in the active playthrough's folder in userData, never in the (read-only) game folder.
+const file = () => join(profileDir(), 'journal.json')
 
 export async function loadJournal(): Promise<Journal> {
   try {
@@ -67,5 +67,13 @@ export function recordJournalMet(location: number, name: string): Promise<Journa
     const met = mergeMet(current.met, [metKey(location, name)])
     if (met.length === current.met.length) return null
     return write({ ...current, met })
+  })
+}
+
+/** Forget the cached journal after the active playthrough changes. */
+export function reloadJournal(): Promise<Journal> {
+  return enqueue(async () => {
+    current = await loadJournal()
+    return current
   })
 }
