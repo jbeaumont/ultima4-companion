@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { COMBAT_SIZE, planCombatTurn, weaponReach } from '../src/domain/combatPlan'
 import type { CombatView } from '../src/domain/combatPlan'
-import { dungeonRoute, dungeonStepCost, stepKeys } from '../src/domain/dungeonRoute'
+import { dungeonPlan, dungeonRoute, dungeonStepCost, stepKeys } from '../src/domain/dungeonRoute'
+import { parseDng } from '../src/parsers/dungeon'
+import { gameFile, hasGame } from './gameFiles'
 
 const GRASS = 0x04
 const WALL = 0x7f
@@ -75,6 +77,14 @@ describe('planCombatTurn', () => {
   })
 })
 
+describe('room triggers', () => {
+  it('steps on a trigger when the preferred side is closed', () => {
+    const v = view({ room: true, party: [{ x: 5, y: 8 }], prefer: 'up', triggers: [{ x: 3, y: 8 }] }, 0x16)
+    for (let x = 0; x < COMBAT_SIZE; x++) v.map[x] = 0x7f // north edge closed
+    expect(planCombatTurn(v)).toEqual({ kind: 'move', dir: 'left' })
+  })
+})
+
 describe('battle spells', () => {
   const party = (over: Partial<{ hp: number; hpMax: number; status: string }>[]) => over.map((m) => ({ hp: 200, hpMax: 200, status: 'G', ...m }))
   const mixtures = (spells: Record<number, number>) => Array.from({ length: 26 }, (_, i) => spells[i] ?? 0)
@@ -118,5 +128,29 @@ describe('dungeon routing', () => {
     const level = new Uint8Array(64).fill(0xf0)
     for (const x of [0, 6, 7]) level[3 * 8 + x] = 0x00
     expect(dungeonRoute(level, 6, 3, 0, 3)).toEqual([2, 2]) // east twice, wrapping
+  })
+})
+
+describe('dungeon plans across levels', () => {
+  const walls = () => new Uint8Array(64).fill(0xf0)
+  it('takes a ladder down and walks to the target', () => {
+    const l1 = walls(), l2 = walls()
+    l1[0] = 0x10; l1[1] = 0x00; l1[2] = 0x20 // up-ladder (entrance), floor, ladder down at 2,0
+    l2[2] = 0x10; l2[3] = 0x00; l2[4] = 0x00
+    expect(dungeonPlan([l1, l2], { z: 0, x: 0, y: 0 }, { z: 1, x: 4, y: 0 })).toEqual([
+      { z: 0, x: 2, y: 0, then: 'down' },
+      { z: 1, x: 4, y: 0, then: null }
+    ])
+  })
+  it('crosses an energy field only when allowed', () => {
+    const l = walls()
+    l[0] = 0x00; l[1] = 0xa1; l[2] = 0x00
+    expect(dungeonPlan([l], { z: 0, x: 0, y: 0 }, { z: 0, x: 2, y: 0 })).toBeNull()
+    expect(dungeonPlan([l], { z: 0, x: 0, y: 0 }, { z: 0, x: 2, y: 0 }, true)).toEqual([{ z: 0, x: 2, y: 0, then: null }])
+  })
+  it.skipIf(!hasGame)('Despise: the altar needs a Dispel (real install)', () => {
+    const levels = parseDng(gameFile('DESPISE.DNG')).levels
+    expect(dungeonPlan(levels, { z: 0, x: 1, y: 1 }, { z: 4, x: 3, y: 5 })).toBeNull()
+    expect(dungeonPlan(levels, { z: 0, x: 1, y: 1 }, { z: 4, x: 3, y: 5 }, true)?.at(-1)).toEqual({ z: 4, x: 3, y: 5, then: null })
   })
 })

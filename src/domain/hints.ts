@@ -56,6 +56,19 @@ const mantra = (virtue: string, word: string, nudge: string, clue: string, sourc
   sources
 })
 
+// What stands between the entrance and each altar, from the dungeon files (rooms, their exits
+// and triggers, energy fields; see tests/hints.test.ts). Despise was also played through.
+const DISPEL = 'Energy fields seal the way: bring a Dispel mixture (D: Sulfurous Ash, Garlic, Black Pearl) and cast it facing the field.'
+const SWITCH = 'The way runs through a room with a hidden switch: after the fight, step on the odd floor tile to open a path.'
+const ALTAR_WAY: Record<string, string> = {
+  Deceit: DISPEL,
+  Despise: `${DISPEL} The altar lies north of a room: in that room step on the plate in the east, then on the one that appears in the south-west, to raise a bridge north over the water, and leave the room northward onto the altar.`,
+  Wrong: DISPEL,
+  Covetous: SWITCH,
+  Shame: SWITCH,
+  Destard: 'Expect to fight through several rooms on the way down.'
+}
+
 const stone = (color: string, virtue: string, dungeon: string, dungeonId: number, level: number, nudge: string, sources: HintSource[]): HintTopic => ({
   id: `stone-${color.toLowerCase()}`,
   title: `${color} Stone (${virtue})`,
@@ -63,7 +76,7 @@ const stone = (color: string, virtue: string, dungeon: string, dungeonId: number
   tiers: [
     nudge,
     `It rests on an altar in the dungeon ${dungeon}.`,
-    `Descend to level ${level} of ${dungeon} and search the altar there.`
+    `Descend to level ${level} of ${dungeon} and search the altar there. ${ALTAR_WAY[dungeon] ?? ''}`.trim()
   ],
   solvedBy: [`stone-${color}`],
   relevantAt: [dungeonId],

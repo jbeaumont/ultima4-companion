@@ -4,6 +4,10 @@ import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import { LOCATIONS } from '@domain/constants'
 import { progress } from '@domain/progress'
 import { toSextant } from '@domain/sextant'
+import { gameFile, hasGame } from './gameFiles'
+import { parseDng } from '@parsers/dungeon'
+import { dungeonPath, roomExits } from '../src/domain/dungeonRoute'
+import { combatWalkable } from '../src/domain/combatPlan'
 import { HINTS, canReveal, dialogueUnlocked, isSolved, maxTier, recordVisit, suggestedTopics, visibleTiers } from '@domain/hints'
 
 interface Npc { name: string; job: string; health: string; keyword1Response: string; keyword2Response: string; question: string; yesResponse: string; noResponse: string }
@@ -91,5 +95,41 @@ describe('gating rules', () => {
     expect(recordVisit([5], 0)).toEqual([5]) // surface
     expect(recordVisit([5], 17)).toEqual([5]) // dungeon
     expect(recordVisit([5, 6], 6)).toEqual([5, 6])
+  })
+})
+
+describe.skipIf(!hasGame)('stone hints vs the dungeon altars (real install)', () => {
+  it('names the level where each dungeon has its altar', () => {
+    const DUNGEON_FILES: Record<string, string> = { Deceit: 'DECEIT.DNG', Despise: 'DESPISE.DNG', Destard: 'DESTARD.DNG', Wrong: 'WRONG.DNG', Covetous: 'COVETOUS.DNG', Shame: 'SHAME.DNG' }
+    // the six dungeon stones (White and Black lie on the surface)
+    const stones = HINTS.filter((h) => h.category === 'stones' && /level \d of \w+/.test(h.tiers[2]))
+    expect(stones.length).toBe(6)
+    for (const h of stones) {
+      const m = /level (\d) of (\w+)/.exec(h.tiers[2])!
+      const dng = gameFile(DUNGEON_FILES[m[2]!]!)
+      const level = Number(m[1]) - 1
+      const altars = [...dng.subarray(level * 64, level * 64 + 64)].filter((c) => (c & 0xf0) === 0xb0)
+      expect(altars.length, `${h.title}: altar on level ${m[1]} of ${m[2]}`).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe.skipIf(!hasGame)('stone hints say what the way to the altar needs (real install)', () => {
+  it('mentions Dispel exactly when energy fields seal the altar, and a switch when only a room trigger opens it', () => {
+    for (const h of HINTS.filter((t) => t.category === 'stones' && /level \d of \w+/.test(t.tiers[2]))) {
+      const dungeon = /level \d of (\w+)/.exec(h.tiers[2])![1]!
+      const d = parseDng(gameFile(`${dungeon.toUpperCase()}.DNG`))
+      const L = d.levels
+      const startI = [...L[0]!].findIndex((c) => (c & 0xf0) === 0x10 || (c & 0xf0) === 0x30)
+      const start = { z: 0, x: startI % 8, y: Math.floor(startI / 8) }
+      let altar = start
+      L.forEach((l, z) => l.forEach((c, i) => { if ((c & 0xf0) === 0xb0) altar = { z, x: i % 8, y: Math.floor(i / 8) } }))
+      const plain = d.rooms.map((r) => roomExits({ tiles: r.tiles, triggers: [] }, combatWalkable))
+      const trig = d.rooms.map((r) => roomExits(r, combatWalkable))
+      const needsDispel = !dungeonPath(L, start, altar, false, (r) => trig[r]!)
+      const needsSwitch = !needsDispel && !dungeonPath(L, start, altar, false, (r) => plain[r]!)
+      expect(/Dispel/.test(h.tiers[2]), `${h.title}: Dispel`).toBe(needsDispel)
+      if (needsSwitch) expect(h.tiers[2], `${h.title}: switch`).toMatch(/switch/)
+    }
   })
 })
