@@ -2,6 +2,23 @@ import type { BattleState } from '@parsers/battle'
 import type { PartySave } from '@parsers/party'
 import type { HudBounds } from './hudBounds'
 
+/**
+ * How the state was observed, separate from what it says: which live attachment
+ * (session), how many successful reads so far (sequence, which grows even when
+ * nothing changes), when the last good read was, and whether it is live, live but
+ * failing consistency checks, a fallback after the game went away, or a save file.
+ */
+export interface Observation {
+  session: string
+  sequence: number
+  observedAt: number
+  status: 'live' | 'retrying' | 'detached' | 'saveFile'
+  /** Memory layout the reader assumed (live only). */
+  layout?: string
+  /** Consecutive inconsistent samples (live only). */
+  failures?: number
+}
+
 /** Everything the renderer needs to know; plain data, safe for IPC. */
 export interface GameState {
   status: 'ok' | 'noGame' | 'noSave' | 'error'
@@ -17,6 +34,8 @@ export interface GameState {
   battle?: BattleState | null
   /** Live mode only: the last person talked to since attaching (from the game's current-conversation record). */
   lastTalk?: { name: string; serial: number } | null
+  /** Provenance and freshness of this state (see Observation). */
+  observation?: Observation
 }
 
 export interface Settings {

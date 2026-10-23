@@ -6,12 +6,13 @@ import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import { parseTlk } from '@parsers/talk'
 import { flat } from '@domain/talkSim'
 import type { GameState } from '@shared/types'
-import { findPartyBlocks, looksLikeParty, pickLive } from './scan'
+import { findPartyBlocks, pickLive } from './scan'
+import { ObservationTracker, takeSample } from './observation'
 import { ProcessReader, dosboxProcesses, memorySupported } from './win32'
 
 const POLL_MS = 250
-const TALK_DS = 0x95ce // D_95CE: the TLK record of the person last talked to (U4_TALK.C C_A4B4)
-const TALK_SIZE = 0x120
+/** While nothing changes, still report a successful read this often, so unchanged never looks stale. */
+const HEARTBEAT_MS = 2000
 const RESCAN_MS = 3000
 const CHUNK = 4 << 20
 const OVERLAP = PARTY_SAV_SIZE
@@ -31,6 +32,9 @@ export class MemorySource {
   private lastTalk: { name: string; serial: number } | null = null
   /** Each monster slot's tile and HP when first seen in the current battle. */
   private battleStart = new Map<number, { tile: number; hp: number }>()
+  private readonly tracker = new ObservationTracker()
+  private lastEmit = 0
+  private lastBytes: { party: Uint8Array; battle: Uint8Array | null } | null = null
   private stopped = true
   private onState: (s: GameState | null) => void = () => {}
 
@@ -75,7 +79,12 @@ export class MemorySource {
     this.reader?.close()
     this.reader = null
     this.last = null
+    this.lastBytes = null
+    // nothing transient survives into the next attachment
     this.talk = null
+    this.lastTalk = null
+    this.battleStart.clear()
+    this.tracker.detach()
     if (was && !this.stopped) this.onState(null)
   }
 
@@ -83,18 +92,32 @@ export class MemorySource {
     if (this.stopped) return
     if (!this.reader) {
       await this.attach()
-      return this.schedule(this.reader ? POLL_MS : RESCAN_MS)
+      const attached = this.reader as ProcessReader | null // set by attach()
+      if (attached) this.tracker.attach(attached.pid, Date.now())
+      return this.schedule(attached ? POLL_MS : RESCAN_MS)
     }
-    const bytes = this.reader.read(this.address, PARTY_SAV_SIZE)
-    if (!bytes || !looksLikeParty(bytes)) {
+    const reader = this.reader
+    const result = takeSample((a, n) => reader.read(a, n), this.address)
+    if (result.kind === 'gone') {
       this.detach()
       return this.schedule(RESCAN_MS)
     }
-    const battle = this.readBattle()
-    this.readTalk()
+    if (result.kind === 'inconsistent') {
+      // keep showing the last consistent state, but say the live view is unsure
+      const before = this.tracker.current()?.status
+      const obs = this.tracker.inconsistent()
+      if (obs.status !== before && this.lastBytes) this.emit(this.lastBytes.party, this.lastBytes.battle)
+      return this.schedule(POLL_MS)
+    }
+    const { party: bytes, battle, talk } = result.sample
+    const wasRetrying = this.tracker.current()?.status === 'retrying'
+    this.tracker.ok(Date.now())
+    this.noticeTalk(talk)
     const snapshot = concat(bytes, battle ?? new Uint8Array(0), Uint8Array.of(this.lastTalk?.serial ?? 0))
-    if (!this.last || !sameBytes(snapshot, this.last)) {
+    const changed = !this.last || !sameBytes(snapshot, this.last)
+    if (changed || wasRetrying || Date.now() - this.lastEmit >= HEARTBEAT_MS) {
       this.last = snapshot
+      this.lastBytes = { party: bytes, battle }
       this.emit(bytes, battle)
     }
     this.schedule(POLL_MS)
@@ -105,8 +128,7 @@ export class MemorySource {
    * talking starts. The first value after attaching is only a baseline (it may be
    * left over from earlier, even another town).
    */
-  private readTalk(): void {
-    const t = this.reader?.read(this.address - BigInt(BATTLE_DS.party) + BigInt(TALK_DS), TALK_SIZE)
+  private noticeTalk(t: Uint8Array | null): void {
     if (!t) return
     if (this.talk && !sameBytes(t, this.talk) && t.some((b) => b !== 0)) {
       const raw = parseTlk(t)[0]?.name
@@ -114,18 +136,6 @@ export class MemorySource {
       if (name) this.lastTalk = { name, serial: (this.lastTalk?.serial ?? 0) + 1 }
     }
     this.talk = t
-  }
-
-  /** The game's mode and, during a battle, its Combat and Fighters globals (null when not fighting). */
-  private readBattle(): Uint8Array | null {
-    const at = (off: number) => this.address - BigInt(BATTLE_DS.party) + BigInt(off)
-    const mode = this.reader?.read(at(BATTLE_DS.curMode), 2)
-    if (!mode || !isBattleMode(mode[0]! | (mode[1]! << 8))) return null
-    const combat = this.reader?.read(at(BATTLE_DS.combat), BATTLE_DS.combatSize)
-    const fighters = this.reader?.read(at(BATTLE_DS.fighters), BATTLE_DS.fightersSize)
-    const active = this.reader?.read(at(BATTLE_DS.activeChara), 2)
-    if (!combat || !fighters || !active) return null
-    return concat(mode, combat, fighters, active)
   }
 
   private emit(bytes: Uint8Array, battle: Uint8Array | null): void {
@@ -142,7 +152,8 @@ export class MemorySource {
     } else {
       this.battleStart.clear()
     }
-    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes), battle: parsed, lastTalk: this.lastTalk })
+    this.onState({ status: 'ok', source: 'memory', ...this.base(), updatedAt: Date.now(), party: parsePartySav(bytes), battle: parsed, lastTalk: this.lastTalk, observation: this.tracker.current() ?? undefined })
+    this.lastEmit = Date.now()
   }
 
   private async attach(): Promise<void> {

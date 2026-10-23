@@ -6,6 +6,8 @@ import type { PartySave } from '@parsers/party'
 import { canSaveHere } from '@domain/unsaved'
 import { unsavedChip } from '@domain/unsavedChip'
 import { useGameState } from './useGameState'
+import { useNow } from './useNow'
+import { sourceLabel } from '@shared/observationLabel'
 
 const MOON_GLYPHS = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
 
@@ -46,14 +48,14 @@ export function Hud() {
   const members = p ? (p.memberCount === 0 ? p.allRecords.slice(0, 1) : p.members) : []
   const chip = p ? unsavedChip(state?.unsavedMoves, canSaveHere(p)) : null
   const saved = !!p && state?.unsavedMoves === 0
+  const now = useNow(1000)
+  const hudLabel = state ? sourceLabel(state, now) : null
   return (
     <div className="hud">
       <header className="hud-head">
         <span className="hud-title">{p ? placeName(p) : 'Ultima IV'}</span>
         {state && (
-          <span className={`source-badge ${state.source === 'memory' ? 'live' : ''}`}>
-            {state.source === 'memory' ? 'LIVE' : 'Save'}
-          </span>
+          <span className={`source-badge ${hudLabel?.level === 'live' ? 'live' : ''}`} title={hudLabel?.title}>{hudLabel?.short}</span>
         )}
         {state?.battle && <span className="hud-battle" title="Battle in progress">⚔ {state.battle.monsters.length}</span>}
         {chip && <span className={`unsaved-chip compact ${chip.level}`} title={chip.hint}>Unsaved {state?.unsavedMoves}</span>}
