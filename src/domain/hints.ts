@@ -5,9 +5,11 @@
 import type { Progress } from './progress'
 import { SECRET_SPOTS } from './places'
 import { toSextant } from './sextant'
+import { canRevealMore, disclosure, shownTiers } from './spoilers'
+import type { SpoilerLevel } from './spoilers'
 
 export type HintCategory = 'basics' | 'runes' | 'mantras' | 'stones' | 'items' | 'altars' | 'abyss'
-export type SpoilerLevel = 'off' | 'nudges' | 'full'
+export type { SpoilerLevel } from './spoilers'
 
 export interface HintSource {
   location: string // LOCATIONS name, as in data/dialogue.json
@@ -370,16 +372,18 @@ export const HINTS: HintTopic[] = [
 
 // --- Gating rules ---
 
-/** Highest tier (1-based count) a spoiler level allows. */
-export const maxTier = (level: SpoilerLevel): number => (level === 'off' ? 0 : level === 'nudges' ? 1 : 3)
+// The rules themselves live in ./spoilers (one policy for every view and the sage).
 
-/** Tiers that may be shown: what the user has revealed, capped by the spoiler level. */
-export function visibleTiers(topic: HintTopic, level: SpoilerLevel, revealed: number): string[] {
-  return topic.tiers.slice(0, Math.max(0, Math.min(revealed, maxTier(level))))
+/** Highest tier (1-based count) a spoiler level allows. */
+export const maxTier = (level: SpoilerLevel): number => disclosure(level).hintTiers
+
+/** Tiers that may be shown: what the user has revealed (all of them once solved), capped by the spoiler level. */
+export function visibleTiers(topic: HintTopic, level: SpoilerLevel, revealed: number, solved = false): string[] {
+  return shownTiers(topic.tiers, level, revealed, solved)
 }
 
 /** Whether another tier can be revealed with a click. */
-export const canReveal = (level: SpoilerLevel, revealed: number): boolean => revealed < maxTier(level)
+export const canReveal = (level: SpoilerLevel, revealed: number): boolean => canRevealMore(level, revealed)
 
 export function isSolved(topic: HintTopic, p: Progress | null): boolean {
   if (!p || !topic.solvedBy?.length) return false

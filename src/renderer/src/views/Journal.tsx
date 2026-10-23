@@ -3,6 +3,7 @@ import type { PartySave } from '@parsers/party'
 import { VIRTUES } from '@domain/constants'
 import { cooldowns } from '@domain/cooldowns'
 import type { SpoilerLevel } from '@domain/hints'
+import { disclosure } from '@domain/spoilers'
 import { MOONGATES, PHASE_NAMES, SPIRITUALITY_RUNE, gateState, stepsUntilRoute, upcomingGates } from '@domain/moongates'
 import { progress } from '@domain/progress'
 import { NOT_EVIL, deedsFor } from '@domain/virtueDeeds'
@@ -216,7 +217,8 @@ function Clues({ journal, update }: Pick<ReturnType<typeof useJournal>, 'update'
 
 function VirtueGuide({ level }: { level: SpoilerLevel }) {
   const [open, setOpen] = useState<number | null>(null)
-  if (level === 'off') {
+  const guide = disclosure(level).deedGuide
+  if (guide === 'hidden') {
     return (
       <Section title="How virtues change">
         <p className="muted small">Set the hint level to Nudges or Full to see which deeds raise and lower each virtue.</p>
@@ -235,7 +237,7 @@ function VirtueGuide({ level }: { level: SpoilerLevel }) {
             <button className="link" onClick={() => setOpen(open === i ? null : i)}>{open === i ? '▾' : '▸'} {v}</button>
             {open === i && (
               <ul>
-                {deedsFor(i, level === 'full').map((d) => (
+                {deedsFor(i, guide === 'all').map((d) => (
                   <li key={d.deed} className={d.good ? 'good' : 'bad'}><b>{d.change}</b> {d.deed}</li>
                 ))}
               </ul>

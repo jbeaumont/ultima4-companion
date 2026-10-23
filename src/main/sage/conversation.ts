@@ -3,6 +3,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { SpoilerLevel } from '@domain/hints'
 import type { GameState } from '@shared/types'
+import { disclosure } from '@domain/spoilers'
+import { fixedCounsel } from './fixedCounsel'
 import { buildStateMessage } from './prompt'
 import type { Persona } from './prompt'
 import { buildRequest, trimHistory } from './request'
@@ -59,6 +61,12 @@ export class SageConversation {
       this.history = []
       this.persona = persona
       this.level = level
+    }
+
+    // hints off is strict: fixed counsel from the player's own state, no model request
+    if (disclosure(level).sage === 'fixed') {
+      on.delta(id, fixedCounsel(state?.party ?? null, persona))
+      return on.done(id, { ok: true, stopReason: 'end_turn', servedBy: 'fixed counsel (hints off)' })
     }
 
     const turn: Message[] = [
