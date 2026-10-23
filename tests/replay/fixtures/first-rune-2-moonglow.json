@@ -1,0 +1,16 @@
+{
+  "name": "first rune: inside Moonglow, the rune topic leads",
+  "verifiedLive": "scripts/hillclimb/first-rune.ts checkpoint 2-moonglow, 2026-10-18",
+  "state": {
+    "location": 5, "x": 1, "y": 15, "moves": 44,
+    "runes": 0, "stones": 0, "items": 0,
+    "karma": [65, 60, 55, 50, 55, 55, 50, 50],
+    "members": [{ "name": "Avatar", "hp": 200, "hpMax": 200, "xp": 100, "classIndex": 0, "status": "G" }],
+    "food": 30000
+  },
+  "knowledge": { "spoilerLevel": "nudges", "revealed": {}, "visited": [5] },
+  "expect": {
+    "nextFirst": "rune-honesty",
+    "dialogueUnlocked": [5]
+  }
+}

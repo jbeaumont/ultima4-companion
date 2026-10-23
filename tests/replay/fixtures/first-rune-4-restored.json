@@ -1,0 +1,52 @@
+{
+  "name": "first rune: an older save restored after finding it (facts revert, knowledge stays)",
+  "verifiedLive": "derived from checkpoints 1 and 3: the restored save is checkpoint 1's state; the playthrough keeps Moonglow visited",
+  "state": {
+    "location": 0,
+    "x": 232,
+    "y": 135,
+    "moves": 42,
+    "runes": 0,
+    "stones": 0,
+    "items": 0,
+    "karma": [
+      65,
+      60,
+      55,
+      50,
+      55,
+      55,
+      50,
+      50
+    ],
+    "members": [
+      {
+        "name": "Avatar",
+        "hp": 200,
+        "hpMax": 200,
+        "xp": 100,
+        "classIndex": 0,
+        "status": "G"
+      }
+    ],
+    "food": 30000
+  },
+  "knowledge": {
+    "spoilerLevel": "nudges",
+    "revealed": {},
+    "visited": [
+      5
+    ]
+  },
+  "expect": {
+    "nextIncludes": [
+      "rune-honesty"
+    ],
+    "notSolved": [
+      "rune-honesty"
+    ],
+    "dialogueUnlocked": [
+      5
+    ]
+  }
+}
