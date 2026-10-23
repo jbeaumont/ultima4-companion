@@ -10,12 +10,16 @@ import { HINTS, dialogueUnlocked, isSolved, visibleTiers } from '@domain/hints'
 import type { SpoilerLevel } from '@domain/hints'
 import { nextSteps } from '@domain/guidance'
 import { progress } from '@domain/progress'
+import { sourceLabel } from '@shared/observationLabel'
+import type { GameState, Observation } from '@shared/types'
 
 interface Fixture {
   name: string
   verifiedLive: string
   state: Partial<Omit<PartySave, 'members'>> & { members: Partial<CharacterRecord>[] }
   knowledge: { spoilerLevel: SpoilerLevel; revealed: Record<string, number>; visited: number[] }
+  /** How the state was observed (e.g. a save-file fallback after the game closed). */
+  observation?: Observation
   expect: {
     nextFirst?: string
     nextIncludes?: string[]
@@ -25,6 +29,7 @@ interface Fixture {
     solved?: string[]
     notSolved?: string[]
     dialogueUnlocked?: number[]
+    sourceLabel?: string
   }
 }
 
@@ -71,6 +76,13 @@ describe.each(fixtures)('replay %s', (_file, f) => {
     for (const id of e.notSolved ?? []) expect(isSolved(HINTS.find((h) => h.id === id)!, p), id).toBe(false)
     for (const loc of e.dialogueUnlocked ?? []) expect(dialogueUnlocked(loc, 'visited', f.knowledge.visited)).toBe(true)
   })
+
+  if (e.sourceLabel) {
+    it('labels where the view comes from', () => {
+      const state = { status: 'ok', source: f.observation?.status === 'live' ? 'memory' : 'saveFile', observation: f.observation } as GameState
+      expect(sourceLabel(state, f.observation?.observedAt ?? 0).text).toBe(e.sourceLabel)
+    })
+  }
 
   it.each(levels)('discloses only what spoiler level %s permits', (level) => {
     const shown = nextSteps(party, level)
