@@ -489,8 +489,17 @@ export class GameDriver {
     const DISPEL = 3
     for (let i = 0; i < tries; i++) {
       const s = this.state()
-      const caster = s.members.findIndex((m) => m.status === 'G' && m.mp >= 20)
-      if (caster < 0 || (s.mixtures[DISPEL] ?? 0) === 0) throw new DriverError('Cannot Dispel: no Dispel mixture or nobody with 20 MP')
+      if ((s.mixtures[DISPEL] ?? 0) === 0) throw new DriverError('Cannot Dispel: no Dispel mixture left')
+      // magic comes back a point a turn (U4_UTIL.C MP_recover): rest until someone can cast
+      for (let rest = 0; rest < 120 && !this.state().members.some((m) => m.status === 'G' && m.mp >= 20); rest++) {
+        await this.press('space', 600)
+        if (this.inBattle()) {
+          const r = await this.fightBattle()
+          if (r.outcome !== 'won') throw new DriverError(`Battle ${r.outcome} while resting to Dispel`)
+        }
+      }
+      const caster = this.state().members.findIndex((m) => m.status === 'G' && m.mp >= 20)
+      if (caster < 0) throw new DriverError('Cannot Dispel: nobody has 20 MP even after resting')
       const [dx, dy] = DNG_DELTA[s.orientation]!
       const at = ((s.y + dy + 8) % 8) * DNG_SIZE + ((s.x + dx + 8) % 8)
       this.key('c')
