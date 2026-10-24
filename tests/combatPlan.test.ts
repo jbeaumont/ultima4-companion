@@ -78,6 +78,17 @@ describe('planCombatTurn', () => {
 })
 
 describe('room triggers', () => {
+  it('dispels an energy field between the party and the trigger or exit it needs', () => {
+    const mix = Array.from({ length: 26 }, (_, i) => (i === 3 ? 1 : 0))
+    // a corridor at row 5 to the west edge, blocked by an energy field at 3,5
+    const v = view({ room: true, party: [{ x: 4, y: 5 }], prefer: 'left', support: { members: [{ hp: 200, hpMax: 200, status: 'G' }], mp: 30, mixtures: mix } }, 0x7f)
+    for (let x = 0; x <= 4; x++) v.map[5 * COMBAT_SIZE + x] = 0x16
+    v.map[5 * COMBAT_SIZE + 3] = 0x45
+    expect(planCombatTurn(v)).toEqual({ kind: 'cast', spell: 'dispel', dir: 'left' })
+    // without the mixture it can only wait
+    expect(planCombatTurn({ ...v, support: { ...v.support!, mixtures: mix.map(() => 0) } }).kind).not.toBe('cast')
+  })
+
   it('waits for a party member on a one-wide way out instead of taking another side', () => {
     // a corridor at x=5 leads north; Danny stands in it, Iolo waits below
     const v = view({ room: true, party: [{ x: 5, y: 3 }, { x: 5, y: 6 }], me: 1, prefer: 'up' }, 0x7f)

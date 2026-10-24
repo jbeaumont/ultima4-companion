@@ -24,6 +24,7 @@ import type { Key } from './input'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const DOOR = 59 // unlocked door; 58 is locked and needs a key
+const STALL_TURNS = 40 // turns without a monster falling before a room battle gives up on the rest
 const DNG_DELTA = [[-1, 0], [0, -1], [1, 0], [0, 1]] as const // dungeon directions W, N, E, S
 
 // Game globals as offsets in the data segment (u4-decompiled U4.H). The party
@@ -350,22 +351,47 @@ export class GameDriver {
    * reach or closes in, and once none remain (or with 'flee') walks off the
    * map. In a dungeon room that is the only way the battle ends.
    */
-  async fightBattle(opts: { goal?: 'fight' | 'flee'; maxTurns?: number; exitToward?: Dir } = {}): Promise<BattleResult> {
+  async fightBattle(opts: { goal?: 'fight' | 'flee'; maxTurns?: number; exitToward?: Dir; exitFor?: () => Dir | undefined } = {}): Promise<BattleResult> {
     const log: string[] = []
     const start = this.state()
+    const limit = opts.maxTurns ?? 300 // per battle: walking from one room into the next starts a new one
     let turns = 0
-    const triggers = this.roomTriggers()
+    let total = 0
+    let room = -1
+    let triggers: Point[] = []
     const stepped = new Set<string>()
-    for (; turns < (opts.maxTurns ?? 300); turns++) {
+    let lastCount = -1
+    let sinceProgress = 0
+    let exitToward = opts.exitToward
+    for (; turns < limit; turns++, total++) {
       const b = await this.awaitPrompt(30000)
       if (!b) break
+      // a new room (the party walked from one room into the next): its own triggers, a fresh count
+      const cell = this.mode() === MODE.room ? this.dungeonCell() : -1
+      if (cell !== room) {
+        room = cell
+        // rooms can open into rooms: each one is left on the side the route goes on from it
+        if (opts.exitFor) exitToward = opts.exitFor() ?? exitToward
+        triggers = this.roomTriggers()
+        stepped.clear()
+        turns = 0
+        sinceProgress = 0
+      }
+      if (b.monsters.length !== lastCount) {
+        if (lastCount === 0 && b.monsters.length > 0) turns = 0 // another battle began
+        lastCount = b.monsters.length
+        sinceProgress = 0
+      } else sinceProgress++
       const me = b.awaiting!
       for (const p of b.view.party) if (p) stepped.add(`${p.x},${p.y}`)
       const open = triggers.filter((t) => !stepped.has(`${t.x},${t.y}`))
-      const action = planCombatTurn({ ...b.view, prefer: opts.exitToward, triggers: open }, opts.goal ?? 'fight')
+      // monsters walled off in a room can't be reached or hit: after a while, leave instead of waiting forever
+      const stalled = b.view.room && b.monsters.length > 0 && sinceProgress > STALL_TURNS
+      const goal = stalled ? 'flee' : opts.goal ?? 'fight'
+      const action = planCombatTurn({ ...b.view, prefer: exitToward, triggers: open }, goal)
       const at = b.view.party[me]!
       const what = action.kind === 'pass' ? '' : action.kind === 'cast' ? ` ${action.spell} ${action.who !== undefined ? `on ${start.members[action.who]?.name}` : action.dir}` : ` ${action.dir}`
-      log.push(`${start.members[me]?.name ?? me}@${at.x},${at.y} ${action.kind}${what} (${b.monsters.length} monsters)`)
+      log.push(`${start.members[me]?.name ?? me}@${at.x},${at.y} ${action.kind}${what} (${b.monsters.length} monsters${stalled ? ', leaving: none reachable' : ''})`)
       await this.act(action)
       // the member's command is done when the prompt clears or passes to someone else
       const until = Date.now() + 5000
@@ -375,11 +401,12 @@ export class GameDriver {
         if (this.i16(DS.activeCharaX) === -1 || this.i16(DS.activeChara) !== me) break
       }
     }
-    if (this.inBattle()) return { turns, outcome: 'timeout', log }
+    if (this.inBattle()) return { turns: total, outcome: 'timeout', log }
     const end = this.state()
     const alive = end.members.some((m) => m.status === 'G' || m.status === 'P')
-    return { turns, outcome: !alive ? 'lost' : opts.goal === 'flee' ? 'left' : 'won', log }
+    return { turns: total, outcome: !alive ? 'lost' : opts.goal === 'flee' ? 'left' : 'won', log }
   }
+
 
   // ---- dungeons -----------------------------------------------------------
 
@@ -443,8 +470,13 @@ export class GameDriver {
     for (let step = 0; step < (opts.maxSteps ?? 200); step++) {
       if (this.inBattle()) {
         if (opts.stopOnBattle) return this.state()
-        // a room is left by walking off its edge: leave on the side the route continues
-        const r = await this.fightBattle({ exitToward: onward })
+        // a room is left by walking off its edge: leave on the side the route continues from the room the party is in
+        const exitFor = (): Dir | undefined => {
+          const here = this.state()
+          const p = dungeonPath([this.dungeonLevel()], { z: 0, x: here.x, y: here.y }, { z: 0, x: tx, y: ty }, opts.dispel, this.roomSides())
+          return p && p.length > 1 ? (['left', 'up', 'right', 'down'] as const)[stepDir(p[0]!, p[1]!)] : undefined
+        }
+        const r = await this.fightBattle({ exitToward: onward, exitFor })
         opts.onBattle?.(r)
         if (r.outcome !== 'won') throw new DriverError(`Battle ${r.outcome} on the way to ${tx},${ty}`)
         continue

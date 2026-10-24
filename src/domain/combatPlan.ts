@@ -13,6 +13,9 @@ const WALKABLE = new Set([
 ])
 export const combatWalkable = (tile: number): boolean => WALKABLE.has(tile)
 
+/** An energy field on the combat map: blocks movement, but Dispel clears it (U4_SPELL.C SPL_Dispel). */
+export const COMBAT_ENERGY_FIELD = 0x45
+
 /** Whether a blow or missile passes over `tile` (COM_CheckHitable). */
 const hitable = (t: number): boolean =>
   t !== 0x49 && !(t <= 0x80 && t > 0x02 && t !== 0x48 && (t < 0x31 || t > 0x34) && !WALKABLE.has(t))
@@ -59,11 +62,12 @@ export type CombatAction =
   | { kind: 'move'; dir: Dir }
   | { kind: 'pass' }
   /** C, the spell letter, then the member's number (Cure, Heal) or a direction (Magic Missile). */
-  | { kind: 'cast'; spell: 'cure' | 'heal' | 'missile'; who?: number; dir?: Dir }
+  | { kind: 'cast'; spell: 'cure' | 'heal' | 'missile' | 'dispel'; who?: number; dir?: Dir }
 
 // spell letters and magic point costs (U4_SPELL.C D_208C)
 export const SPELL_CAST = {
   cure: { letter: 'c', index: 2, mp: 5 },
+  dispel: { letter: 'd', index: 3, mp: 20 },
   heal: { letter: 'h', index: 7, mp: 10 },
   missile: { letter: 'm', index: 12, mp: 5 }
 } as const
@@ -86,7 +90,7 @@ function attackDir(v: CombatView, from: Point): Dir | null {
 }
 
 /** Breadth-first search from the active member; returns the first step towards the nearest cell satisfying `goal`. */
-function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null, throughFriends = false): Dir | null {
+function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null, throughFriends = false, throughFields = false): Dir | null {
   const me = v.party[v.me]!
   const blockers = throughFriends ? v.monsters : [...v.monsters, ...v.party.filter((p): p is Point => !!p)]
   const occupied = new Set(blockers.map((p) => `${p.x},${p.y}`))
@@ -101,7 +105,8 @@ function firstStep(v: CombatView, goal: (x: number, y: number) => Dir | null, th
       const x = p.x + dx
       const y = p.y + dy
       const k = `${x},${y}`
-      if (!inside(x, y) || seen.has(k) || occupied.has(k) || !combatWalkable(tileAt(v, x, y))) continue
+      const t = tileAt(v, x, y)
+      if (!inside(x, y) || seen.has(k) || occupied.has(k) || !(combatWalkable(t) || (throughFields && t === COMBAT_ENERGY_FIELD))) continue
       seen.set(k, first ?? dir)
       queue.push({ x, y })
     }
@@ -173,9 +178,19 @@ export function planCombatTurn(v: CombatView, goal: 'fight' | 'flee' = 'fight'):
     const around = firstStep(v, want, true)
     if (around) return { kind: 'pass' }
     // the side we want is closed: a trigger may open it
+    const onTrigger = (x: number, y: number) => (v.triggers?.some((t) => t.x === x && t.y === y) ? ('up' as Dir) : null)
     if (v.triggers?.length) {
-      const toTrigger = firstStep(v, (x, y) => (v.triggers!.some((t) => t.x === x && t.y === y) ? 'up' : null))
+      const toTrigger = firstStep(v, onTrigger)
       if (toTrigger) return { kind: 'move', dir: toTrigger }
+    }
+    // an energy field may stand in the way: Dispel it if we can (aimed at the field next to us)
+    const s = v.support
+    if (s && (s.mixtures[SPELL_CAST.dispel.index] ?? 0) > 0 && s.mp >= SPELL_CAST.dispel.mp) {
+      const step = firstStep(v, want, false, true) ?? (v.triggers?.length ? firstStep(v, onTrigger, false, true) : null)
+      if (step) {
+        const [dx, dy] = STEPS.find(([d]) => d === step)!.slice(1) as [number, number]
+        return tileAt(v, me.x + dx, me.y + dy) === COMBAT_ENERGY_FIELD ? { kind: 'cast', spell: 'dispel', dir: step } : { kind: 'move', dir: step }
+      }
     }
   }
   const out = exitDir(v, me.x, me.y)
