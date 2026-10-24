@@ -68,3 +68,6 @@
 .d-band { font-size: 11px; color: var(--muted); margin-top: 4px; }
 .d-band.b3 { color: #c9b26a; }
 .d-band.b4 { color: var(--accent); font-weight: 600; }
+.d-newgame { grid-column: 1 / -1; max-width: 760px; }
+.d-newgame h2 { margin-top: 0; }
+.d-newgame-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }

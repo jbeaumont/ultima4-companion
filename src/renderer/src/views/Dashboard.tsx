@@ -19,11 +19,12 @@ import type { GameState } from '@shared/types'
 import { differentAvatar } from '@shared/profiles'
 import { sourceLabel } from '@shared/observationLabel'
 import { useNow } from '../useNow'
-import type { Profile } from '@shared/profiles'
+import type { Profile, ProfileIndex } from '@shared/profiles'
 import { BattlePanel } from '../components/BattlePanel'
 import { useDashboardArt } from '../useDashboardArt'
 import type { DashboardArt } from '../useDashboardArt'
 import { useJournal } from '../useJournal'
+import { useNewPlaythrough } from '../useNewPlaythrough'
 
 // the black stone is drawn as dark slate so it stays visible on the dark theme
 const STONE_COLORS = ['#3b6fd9', '#e6c53a', '#d94a3b', '#3fa85a', '#e48a2c', '#8a4fc7', '#ecece6', '#6b6880']
@@ -59,7 +60,7 @@ function Hero({ state, p, art }: { state: GameState; p: PartySave; art: Dashboar
         <h2>{me?.name || 'Avatar'}, the Seeker</h2>
         {me && (
           <div className="d-sub">
-            {CLASSES[me.classIndex] ?? `#${me.classIndex}`} · Level {Math.floor(me.hpMax / 100)} · HP {me.hp}/{me.hpMax} · {p.gold} gold · {Math.floor(p.food / 100)} food
+            {CLASSES[me.classIndex] ?? `#${me.classIndex}`} · <span title="Level is max HP ÷ 100, as on the game's Z screen. New characters start at 1 to 3 by class.">Level {Math.floor(me.hpMax / 100)}</span> · HP {me.hp}/{me.hpMax} · {p.gold} gold · {Math.floor(p.food / 100)} food
           </div>
         )}
         <div className="d-sub">{whereLine(p)} · {p.moves} moves</div>
@@ -234,10 +235,35 @@ function Companions({ p, art, towns }: { p: PartySave; art: DashboardArt | null;
   )
 }
 
+/** A new playthrough whose save still holds another character: what to do, instead of that character's details. */
+function NewPlaythrough({ index, p, onFollow }: { index: ProfileIndex; p: PartySave; onFollow: () => void }) {
+  const active = index.profiles.find((q) => q.id === index.active)!
+  const me = p.allRecords[0]!
+  const owner = index.profiles.find((q) => q.id !== active.id && q.avatar === me.name)
+  return (
+    <section className="panel d-newgame">
+      <h2>New playthrough: {active.name}</h2>
+      <p>
+        The game's save still holds <strong>{me.name}</strong>{owner ? ` from "${owner.name}"` : ''} ({CLASSES[me.classIndex] ?? 'Avatar'}, {p.moves} moves).
+        This playthrough has not started yet, so its journal and map stay empty.
+      </p>
+      <p>
+        To begin, start a new game in Ultima IV: press <strong>Play Ultima IV</strong>, then at the title choose <strong>Initiate New Game</strong> and
+        answer the fortune teller. The companion follows your new character from then on.
+      </p>
+      <div className="d-newgame-actions">
+        <button className="btn" onClick={onFollow}>Follow {me.name} in this playthrough instead</button>
+        <span className="muted small">Snapshots can bring back an earlier save at any time.</span>
+      </div>
+    </section>
+  )
+}
+
 export function Dashboard({ state, onNavigate }: { state: GameState | null; onNavigate: (v: 'Hints') => void }) {
   const p = state?.party ?? null
   const art = useDashboardArt(state?.gameDir ?? null)
   const { journal } = useJournal()
+  const { waiting, index, follow } = useNewPlaythrough(p)
   // hold nudges back until the journal has loaded, so nothing flashes past an 'off' setting
   const towns = disclosure(journal?.spoilerLevel ?? 'off').companionTowns
   if (!p) {
@@ -247,6 +273,15 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
         <p className="muted">Waiting for a save file…</p>
         <p className="muted small">Press Play Ultima IV in the sidebar to start the game.</p>
       </>
+    )
+  }
+  // until the playthroughs load, show nothing rather than flash a character this playthrough may not follow
+  if (!index) return <div className="dash" />
+  if (waiting) {
+    return (
+      <div className="dash">
+        <NewPlaythrough index={index!} p={p} onFollow={follow} />
+      </div>
     )
   }
   return (

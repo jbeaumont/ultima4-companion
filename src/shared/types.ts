@@ -86,6 +86,7 @@ export const IPC = {
   profilesList: 'profiles:list',
   profileCreate: 'profiles:create',
   setWelcomeSeen: 'settings:welcome-seen',
+  profileFollow: 'profiles:follow',
   profileSwitch: 'profiles:switch',
   profileRename: 'profiles:rename',
   snapshotsList: 'snapshots:list',
