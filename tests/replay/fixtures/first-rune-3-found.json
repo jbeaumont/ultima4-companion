@@ -2,17 +2,55 @@
   "name": "first rune: after searching at Moonglow 8,6",
   "verifiedLive": "scripts/hillclimb/first-rune.ts checkpoint 3-rune, 2026-10-18",
   "state": {
-    "location": 5, "x": 8, "y": 6, "moves": 65,
-    "runes": 1, "stones": 0, "items": 0,
-    "karma": [65, 60, 55, 50, 55, 60, 50, 50],
-    "members": [{ "name": "Avatar", "hp": 200, "hpMax": 200, "xp": 100, "classIndex": 0, "status": "G" }],
+    "location": 5,
+    "x": 8,
+    "y": 6,
+    "moves": 65,
+    "runes": 1,
+    "stones": 0,
+    "items": 0,
+    "karma": [
+      65,
+      60,
+      55,
+      50,
+      55,
+      60,
+      50,
+      50
+    ],
+    "members": [
+      {
+        "name": "Avatar",
+        "hp": 200,
+        "hpMax": 200,
+        "xp": 100,
+        "classIndex": 0,
+        "status": "G"
+      }
+    ],
     "food": 30000
   },
-  "knowledge": { "spoilerLevel": "nudges", "revealed": {}, "visited": [5] },
+  "knowledge": {
+    "spoilerLevel": "nudges",
+    "revealed": {},
+    "visited": [
+      5
+    ]
+  },
   "expect": {
-    "nextExcludes": ["rune-honesty"],
-    "nextIncludes": ["rune-valor"],
-    "checklistDone": ["rune-Honesty"],
-    "solved": ["rune-honesty"]
+    "nextExcludes": [
+      "rune-honesty"
+    ],
+    "nextIncludes": [
+      "rune-valor",
+      "opening-lord-british"
+    ],
+    "checklistDone": [
+      "rune-Honesty"
+    ],
+    "solved": [
+      "rune-honesty"
+    ]
   }
 }
