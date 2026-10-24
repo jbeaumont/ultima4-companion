@@ -4,7 +4,7 @@ Electron + Vite + React + TypeScript desktop companion for the GOG release of Ul
 Full roadmap: see the "Milestones" section of README.md.
 
 ## Commands
-- `npm run dev` — launch the app (electron-vite)
+- `npm run dev` — launch the app (electron-vite). Its companion data lives in `%APPDATA%\ultima4-companion-dev` (`src/main/devData.ts`), apart from the installed app's `ultima4-companion`; the first dev run copies the companion's files from there. It plays the real saves.
 - `npm test` — Vitest; tests in `tests/` against the real install are skipped when it is absent
 - `npm run typecheck` — TypeScript 7 (`tsc --noEmit`)
 - `npm run extract` — regenerate `data/` (tile atlas, dialogue JSON) from the install

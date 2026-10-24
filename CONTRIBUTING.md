@@ -6,6 +6,7 @@ Several people, and their AI agents, work on this at once. These rules keep us o
 1. Install Node.js 24, Git and the GitHub CLI (`gh`), on Windows 10 or 11.
 2. Install Ultima IV from GOG. If it isn't at `C:\Program Files\GOG Galaxy\Games\Ultima 4`, set `U4_DIR` to its folder.
 3. Clone, then `npm install`, `npm test` (the real-install tests run only when the game is found) and `npm run dev`.
+   `npm run dev` keeps its companion data in `%APPDATA%\ultima4-companion-dev`, apart from an installed copy (`ultima4-companion`) and test instances (`ultima4-companion-test`). It still reads your real game saves.
 
 ## Ground rules
 - **Never commit game files.** `.gitignore` blocks the raw formats (`*.SAV`, `*.MAP`, `*.ULT`, `*.TLK`, `*.DNG`, `*.EGA`, ...). Small derived data in `data/` is fine. Keep the repo private.
