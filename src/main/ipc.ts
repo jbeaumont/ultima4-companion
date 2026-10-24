@@ -42,9 +42,12 @@ const send = (channel: string, payload: unknown): void => {
 let lastTalk: GameState['lastTalk'] = null // a new object for each new conversation, even after the reader restarts
 const onState = (state: GameState): void => {
   send(IPC.stateChanged, state)
-  trackExplored(state.party)
   const avatar = state.party?.allRecords[0]?.name
-  if (avatar) void profiles().noteAvatar(avatar).catch(() => undefined)
+  const moves = state.party?.moves ?? 0
+  // a new playthrough waiting for its new game keeps the old character's travels out of its map and journal
+  if (profiles().waiting(avatar, moves)) return
+  trackExplored(state.party)
+  if (avatar) void profiles().noteAvatar(avatar, moves).catch(() => undefined)
   const loc = state.party?.location
   if (loc === undefined || loc < 1 || loc > 16) return
   recordJournalVisit(loc).then((j) => j && send(IPC.journalChanged, j), () => undefined)
@@ -73,7 +76,16 @@ export async function setupIpc(): Promise<void> {
   await profiles().init()
   ipcMain.handle(IPC.profilesList, () => profiles().list())
   ipcMain.handle(IPC.profileCreate, async (_e, name: unknown) => {
-    await profiles().create(typeof name === 'string' ? name : '')
+    // the character in the save now belongs to the playthrough it came from; the new one waits for a new game
+    const me = source?.getState()?.party
+    const avatar = me?.allRecords[0]?.name
+    await profiles().create(typeof name === 'string' ? name : '', avatar ? { avatar, moves: me!.moves } : undefined)
+    return profiles().list()
+  })
+  ipcMain.handle(IPC.profileFollow, async () => {
+    const st = source?.getState() ?? null
+    const avatar = st?.party?.allRecords[0]?.name
+    if (avatar && (await profiles().follow(avatar)) && st) onState(st)
     return profiles().list()
   })
   ipcMain.handle(IPC.profileSwitch, async (_e, id: unknown) => {

@@ -82,6 +82,7 @@ export const IPC = {
   resetTestJournal: 'journal:resetTest',
   profilesList: 'profiles:list',
   profileCreate: 'profiles:create',
+  profileFollow: 'profiles:follow',
   profileSwitch: 'profiles:switch',
   profileRename: 'profiles:rename',
   snapshotsList: 'snapshots:list',

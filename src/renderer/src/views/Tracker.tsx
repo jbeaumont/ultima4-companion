@@ -11,6 +11,7 @@ import type { GameState } from '@shared/types'
 import { sourceLabel } from '@shared/observationLabel'
 
 import { VirtueRow } from '../components/VirtueRow'
+import { useNewPlaythrough } from '../useNewPlaythrough'
 
 const STONE_COLORS: Record<string, string> = {
   Blue: '#3b6fd9', Yellow: '#e6c53a', Red: '#d94a3b', Green: '#3fa85a',
@@ -188,10 +189,17 @@ function StatusBar({ state }: { state: GameState | null }) {
 
 export function Tracker({ state }: { state: GameState | null }) {
   const p = state?.party ?? null
+  const { waiting, follow } = useNewPlaythrough(p)
   return (
     <>
       <h2>Tracker</h2>
       <StatusBar state={state} />
+      {waiting && (
+        <p className="panel small">
+          New playthrough: the game's save still holds {p!.allRecords[0]!.name} from before. Start a new game in Ultima IV (Initiate New Game), or{' '}
+          <button className="btn small" onClick={follow}>follow {p!.allRecords[0]!.name} here</button>
+        </p>
+      )}
       {p ? (
         <div className="grid">
           <Party p={p} />
