@@ -23,6 +23,14 @@ export interface SnapshotMeta {
   hash: string
   files: SaveFile[]
   summary: { names: string[]; moves: number; location: string; x: number; y: number; avatarCount: number } | null
+  /** The companion playthrough that was active when it was taken (absent on older snapshots). */
+  playthrough?: SnapshotPlaythrough
+}
+
+export interface SnapshotPlaythrough {
+  id: string
+  name: string
+  avatar?: string
 }
 
 const KEEP_AUTO = 50
@@ -73,17 +81,43 @@ function summarize(party: Uint8Array | undefined): SnapshotMeta['summary'] {
   }
 }
 
-/** Which snapshots pruning removes: auto ones beyond the newest `keep`; others are kept. */
+/**
+ * Which snapshots pruning removes: auto ones beyond the newest `keep` of each
+ * playthrough (so a busy playthrough never prunes another's); others are kept.
+ */
 export function toPrune(metas: SnapshotMeta[], keep = KEEP_AUTO): string[] {
+  const seen = new Map<string, number>()
   return metas
     .filter((m) => m.reason === 'auto')
     .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(keep)
+    .filter((m) => {
+      const k = m.playthrough?.id ?? ''
+      const n = (seen.get(k) ?? 0) + 1
+      seen.set(k, n)
+      return n > keep
+    })
     .map((m) => m.id)
 }
 
+/**
+ * Why restoring this snapshot needs a second look, or null: it belongs to another
+ * playthrough, or its Avatar is not the one this playthrough follows. The game has
+ * one save slot, so restoring puts that character in it while the active
+ * playthrough's journal and map stay loaded.
+ */
+export function restoreWarning(meta: SnapshotMeta, active: SnapshotPlaythrough): string | null {
+  const avatar = meta.summary?.names[0]
+  const other = meta.playthrough && meta.playthrough.id !== active.id ? meta.playthrough : null
+  const otherAvatar = !!avatar && !!active.avatar && avatar !== active.avatar
+  if (!other && !otherAvatar) return null
+  const from = other ? `the playthrough "${other.name}"` : 'another character'
+  return `This snapshot is from ${from}${avatar ? ` (Avatar ${avatar})` : ''}, but "${active.name}"${active.avatar ? ` (Avatar ${active.avatar})` : ''} is active. ` +
+    `Restoring puts that save in the game's single slot while this playthrough's journal and explored map stay loaded; switch playthroughs in Settings first if that is not what you want.`
+}
+
 export class SnapshotStore {
-  constructor(private readonly root: string) {}
+  /** `playthrough` names the active playthrough, recorded on every snapshot taken. */
+  constructor(private readonly root: string, private readonly playthrough: () => SnapshotPlaythrough | undefined = () => undefined) {}
 
   async list(): Promise<SnapshotMeta[]> {
     let ids: string[]
@@ -115,6 +149,7 @@ export class SnapshotStore {
     const existing = await this.list()
     if (reason === 'auto' && existing[0]?.hash === hash) return null
 
+    const playthrough = this.playthrough()
     const meta: SnapshotMeta = {
       id: snapshotId(now, reason),
       createdAt: now.getTime(),
@@ -122,7 +157,8 @@ export class SnapshotStore {
       ...(label ? { label: label.slice(0, 80) } : {}),
       hash,
       files: Object.keys(files) as SaveFile[],
-      summary: summarize(files['PARTY.SAV'])
+      summary: summarize(files['PARTY.SAV']),
+      ...(playthrough ? { playthrough } : {})
     }
     // build in a temp folder and rename, so a crash never leaves a half snapshot
     const tmp = join(this.root, `.${meta.id}.tmp`)
