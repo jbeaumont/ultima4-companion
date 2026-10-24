@@ -4,14 +4,21 @@
 // game it launches writes to a test save overlay inside that folder.
 import { app } from 'electron'
 import { join } from 'node:path'
+import { dataFolder, seedDevData } from './devData'
 import { realOverlay } from './saveLocation'
 import type { SaveLocation } from './saveLocation'
 
 export const TEST_MODE = process.argv.includes('--test') || process.env['U4C_TEST'] === '1'
 
+/** An unpackaged run that is not a test instance (`npm run dev`): plays the real game, keeps its own companion data. */
+export const DEV_MODE = !TEST_MODE && !app.isPackaged
+
 /** Must run before anything reads app.getPath('userData'). */
 export function applyMode(): void {
-  if (TEST_MODE) app.setPath('userData', join(app.getPath('appData'), 'ultima4-companion-test'))
+  const folder = dataFolder(TEST_MODE, app.isPackaged)
+  if (!folder) return
+  if (DEV_MODE) seedDevData(app.getPath('appData'))
+  app.setPath('userData', join(app.getPath('appData'), folder))
 }
 
 /** The DOSBox overlay this instance reads and writes: real saves, or the test folder. */
