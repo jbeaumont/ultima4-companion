@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BattlePanel } from './components/BattlePanel'
+import { Welcome } from './components/Welcome'
+import type { SettingsInfo } from '@shared/types'
 import { useGameState } from './useGameState'
 import { Dashboard } from './views/Dashboard'
 import { Dialogue } from './views/Dialogue'
@@ -20,6 +22,8 @@ export function App() {
   const [state, setState] = useGameState()
   const [sageOn, setSageOn] = useState(false)
   const [testMode, setTestMode] = useState(false)
+  const [info, setInfo] = useState<SettingsInfo | null>(null)
+  const [welcome, setWelcome] = useState(false)
   const [launching, setLaunching] = useState(false)
   const [launchMsg, setLaunchMsg] = useState<{ ok: boolean; text: string } | null>(null)
   useEffect(() => {
@@ -27,11 +31,19 @@ export function App() {
       window.u4.getSettings().then((s) => {
         setSageOn(s.sageEnabled)
         setTestMode(s.testMode)
+        setInfo(s)
       }, () => undefined)
     }
     refresh()
+    // first run: the welcome (not in test instances, where scripts drive the views)
+    window.u4.getSettings().then((s) => { if (!s.welcomeSeen && !s.testMode) setWelcome(true) }, () => undefined)
+    const show = (): void => setWelcome(true)
     window.addEventListener('u4-settings-changed', refresh)
-    return () => window.removeEventListener('u4-settings-changed', refresh)
+    window.addEventListener('u4-show-welcome', show)
+    return () => {
+      window.removeEventListener('u4-settings-changed', refresh)
+      window.removeEventListener('u4-show-welcome', show)
+    }
   }, [])
   useEffect(() => {
     if (!sageOn && view === 'Sage') setView('Settings')
@@ -54,6 +66,7 @@ export function App() {
 
   return (
     <div className="app">
+      {welcome && <Welcome state={state} info={info} onClose={() => setWelcome(false)} />}
       <nav className="sidebar">
         <h1>Ultima IV</h1>
         {testMode && <div className="test-badge">TEST INSTANCE</div>}

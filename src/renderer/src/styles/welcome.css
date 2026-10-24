@@ -1,0 +1,12 @@
+.welcome-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(8, 6, 18, 0.72); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 40px 16px; }
+.welcome { background: var(--panel); border: 1px solid #2e2850; border-radius: 12px; max-width: 720px; width: 100%; padding: 22px 26px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+.welcome h2 { margin-top: 0; }
+.welcome section { margin-top: 16px; }
+.welcome h3 { margin: 0 0 6px; }
+.welcome ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.welcome-choice { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.welcome-tour { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin: 0; }
+.welcome-tour dt { font-weight: 600; }
+.welcome-tour dd { margin: 0; color: var(--muted); }
+.welcome-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+@media (max-width: 640px) { .welcome-tour { grid-template-columns: 1fr; } }
