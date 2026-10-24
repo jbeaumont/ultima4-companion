@@ -1,0 +1,27 @@
+/* Styles for the pop-out HUD window. */
+.hud { height: 100vh; display: flex; flex-direction: column; background: var(--bg); border: 1px solid #3a3350; font-size: 11px; line-height: 1.2; overflow: hidden; user-select: none; }
+.hud-head { display: flex; align-items: center; gap: 8px; height: 24px; flex: none; padding: 0 0 0 8px; background: var(--panel); border-bottom: 1px solid #3a3350; -webkit-app-region: drag; }
+.hud-title { flex: 1; min-width: 0; color: var(--accent); font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-close { -webkit-app-region: no-drag; width: 28px; height: 100%; border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.hud-close:hover { background: #7a2a2a; color: #fff; }
+.hud-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; padding: 6px 8px; overflow: auto; }
+.hud-party { display: flex; flex-direction: column; gap: 3px; }
+.hud-member { display: grid; grid-template-columns: minmax(0, 64px) 1fr 10px; gap: 6px; align-items: center; }
+.hud-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-bar { position: relative; height: 12px; border-radius: 3px; border: 1px solid #26263d; }
+.hud-hp { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.hud-status { font-weight: 700; text-align: center; }
+.hud-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hud-virtues { display: flex; flex-direction: column; gap: 2px; }
+.hud-virtue { display: grid; grid-template-columns: 22px 1fr 10px; gap: 4px; align-items: center; color: var(--muted); }
+.hud-virtue .bar { height: 5px; }
+.hud-virtue .avatar { font-size: 11px; text-align: center; }
+.hud-moons { display: flex; justify-content: space-between; gap: 6px; padding-top: 4px; border-top: 1px solid #26263d; white-space: nowrap; }
+.hud-wait { padding: 8px; margin: 0; }
+@media (max-width: 300px) { .hud-body { grid-template-columns: 1fr; } }
+.hud-saved { font-size: 11px; color: var(--muted); }
+/* HUD during a battle */
+.hud-battle { font-weight: 700; color: #ff8f7a; }
+.hud-foes { display: flex; flex-direction: column; gap: 3px; }
+.hud-foe { display: grid; grid-template-columns: minmax(0, 64px) 1fr; gap: 6px; align-items: center; }
+.fill.foe { background: linear-gradient(90deg, #8a2a2a, #e0604a); }

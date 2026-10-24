@@ -1,0 +1,15 @@
+/* Styles used only by the battle view. */
+/* live battle panel */
+.panel.battle { grid-column: 1 / -1; border-color: #7a3a3a; }
+.panel.battle h3 { color: #ff8f7a; }
+.battle-body { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.battle-field { image-rendering: pixelated; border: 1px solid #2e2850; border-radius: 6px; max-width: 100%; }
+.battle-side { flex: 1; min-width: 240px; }
+.battle-list { list-style: none; margin: 8px 0 14px; padding: 0; display: grid; gap: 6px; }
+.battle-list li { display: grid; grid-template-columns: 110px 1fr 150px; gap: 10px; align-items: center; font-size: 13px; }
+.battle-list li.active .b-name { color: var(--accent); font-weight: 600; }
+.battle-list li.gone { opacity: .5; }
+.b-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.b-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #8a2a2a, #e0604a); }
+.b-bar.mine > span { background: linear-gradient(90deg, #2f7a4f, #5fdc8f); }
+.b-hp { color: var(--muted); font-size: 12px; }

@@ -16,6 +16,7 @@ Full roadmap: see the "Milestones" section of README.md.
 - `src/domain/` — game constants and derived logic (progress, cooldowns, moongates)
 - `src/main/`, `src/preload/`, `src/renderer/` — Electron processes; renderer reaches main only via the typed `window.u4` bridge
 - `data/` — derived data committed to the repo; raw game files are gitignored and must never be committed
+- `src/renderer/src/styles/` — one CSS file per area (imported in `main.tsx`); `base.css` holds the theme and shared rules. Put new rules in the area's file with selectors unique to it, not in `base.css`, so parallel work doesn't collide
 
 ## Game data facts
 - Install: `C:\Program Files\GOG Galaxy\Games\Ultima 4` (override with `U4_DIR`)

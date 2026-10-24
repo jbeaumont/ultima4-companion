@@ -1,0 +1,5 @@
+/* Styles used only by the hints view. */
+.tier { font-size: 13px; line-height: 1.4; }
+.tier-label { color: var(--accent); font-size: 11px; text-transform: uppercase; margin-right: 4px; }
+.hint-actions { display: flex; gap: 8px; }
+.hint-filters { margin: 16px 0; }

@@ -1,0 +1,14 @@
+/* Styles used only by the sage view. */
+.sage { display: flex; flex-direction: column; gap: 10px; }
+.sage-head .toolbar { gap: 16px; }
+.sage-list { display: flex; flex-direction: column; gap: 10px; min-height: 240px; max-height: 55vh; overflow-y: auto; background: #0b0b14; border: 1px solid #26263d; border-radius: 8px; padding: 12px; }
+.sage-empty { margin: auto; text-align: center; }
+.sage-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.sage-msg { white-space: pre-wrap; line-height: 1.45; padding: 8px 12px; border-radius: 8px; max-width: 85%; overflow-wrap: anywhere; }
+.sage-msg.user { align-self: flex-end; background: #2a2540; }
+.sage-msg.sage { align-self: flex-start; background: var(--panel); }
+.sage-msg.system { align-self: center; text-align: center; background: none; }
+.sage-who { margin-bottom: 2px; }
+.sage-input { display: flex; gap: 8px; align-items: stretch; }
+.sage-input textarea { flex: 1; resize: vertical; background: #0b0b14; color: var(--text); border: 1px solid #26263d; border-radius: 6px; padding: 8px; font: inherit; font-size: 14px; }
+.sage-actions { display: flex; flex-direction: column; gap: 6px; }
