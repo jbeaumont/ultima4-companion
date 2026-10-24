@@ -30,6 +30,7 @@ Full roadmap: see the "Milestones" section of README.md.
 ## Spoilers
 - One policy decides what each hint level shows: `src/domain/spoilers.ts` (`disclosure(level)`, `shownTiers`, `townShown`, `cellShown`). Views and the Sage ask it; never compare spoiler levels in a view. `tests/spoilers.test.ts` checks every surface against it.
 - Off is strict: no hint text, leads, hidden places or deed guide, and the Sage gives fixed counsel without calling the model. Nudges and Full are best effort for the Sage (instructions plus filtered hints), and the UI says so.
+- Sage budget: `npx tsx scripts/sage-budget.ts [outDir] [--yes]` asks seven fixed questions per persona and model-backed level through the app's conversation code and records output and thinking tokens, cache use and cost. Without `--yes` it only prints the plan and an estimate. It spends money (about $0.40 for the full set at Opus 5.5 prices, at most about $4.50), so run it only with the owner's OK.
 - Explicit reveals are capped by the level; discovered knowledge (solved topics, visited towns, seen cells) shows at any level that shows hints.
 
 ## Playthroughs
