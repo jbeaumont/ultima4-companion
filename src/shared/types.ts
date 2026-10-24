@@ -48,6 +48,8 @@ export interface Settings {
   editorEnabled?: boolean
   /** Show the optional AI sage (off by default; nothing Anthropic-related loads until on). */
   sageEnabled?: boolean
+  /** The first-run welcome has been finished or skipped. */
+  welcomeSeen?: boolean
 }
 
 export interface SettingsInfo {
@@ -59,6 +61,7 @@ export interface SettingsInfo {
   attachedPid: number | null
   editorEnabled: boolean
   sageEnabled: boolean
+  welcomeSeen: boolean
   /** This is a --test instance: isolated data, test saves, turbo launch profile. */
   testMode: boolean
 }
@@ -82,6 +85,7 @@ export const IPC = {
   resetTestJournal: 'journal:resetTest',
   profilesList: 'profiles:list',
   profileCreate: 'profiles:create',
+  setWelcomeSeen: 'settings:welcome-seen',
   profileSwitch: 'profiles:switch',
   profileRename: 'profiles:rename',
   snapshotsList: 'snapshots:list',

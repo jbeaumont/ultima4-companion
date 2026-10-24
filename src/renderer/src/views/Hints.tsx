@@ -9,6 +9,7 @@ import { LOCATIONS } from '@domain/constants'
 import { metKey } from '@shared/journal'
 import type { GameState } from '@shared/types'
 import { useJournal } from '../useJournal'
+import { LEVELS } from '../spoilerLevels'
 
 const CATEGORIES: { id: HintCategory; title: string }[] = [
   { id: 'basics', title: 'Basics' },
@@ -18,12 +19,6 @@ const CATEGORIES: { id: HintCategory; title: string }[] = [
   { id: 'items', title: 'Items' },
   { id: 'altars', title: 'Altars' },
   { id: 'abyss', title: 'The Abyss' }
-]
-
-const LEVELS: { id: SpoilerLevel; label: string; blurb: string }[] = [
-  { id: 'off', label: 'Off', blurb: 'No hint text at all: just topic titles and whether you have solved them.' },
-  { id: 'nudges', label: 'Nudges only', blurb: 'You may reveal the gentle first nudge for each topic, never the clue or the answer.' },
-  { id: 'full', label: 'Full', blurb: 'You may reveal nudge, then clue, then the full answer, one click at a time.' }
 ]
 
 const TIER_LABELS = ['Nudge', 'Clue', 'Answer']

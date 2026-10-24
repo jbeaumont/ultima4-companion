@@ -209,6 +209,11 @@ export function Settings({ state, onState }: Props) {
         <p className="muted small">Your key never leaves this computer except in requests to Anthropic.</p>
         </>)}
       </section>
+      <section className="panel settings">
+        <h3>Welcome</h3>
+        <p className="small">The first-run introduction: what the companion does, your save, the spoiler level and a short tour.</p>
+        <button className="btn small" onClick={() => window.dispatchEvent(new Event('u4-show-welcome'))}>Show the welcome again</button>
+      </section>
     </>
   )
 }

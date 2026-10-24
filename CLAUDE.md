@@ -39,6 +39,9 @@ Full roadmap: see the "Milestones" section of README.md.
 - Snapshots stay in one store, because the game has one save slot and restoring another playthrough's snapshot is how you swap characters. Each records the active playthrough (`playthrough` in its meta); the Snapshots view shows this playthrough's by default, auto snapshots are pruned per playthrough, and restoring another playthrough's (or another Avatar's) save gets a warning in the confirmation (`restoreWarning`).
 - Switching (Settings → Playthroughs) writes out the fog, loads the other profile's journal and fog, and reloads the window. Each profile records its Avatar's name; the Dashboard flags a save for a different character.
 
+## First run
+- `src/renderer/src/components/Welcome.tsx` shows once (`settings.welcomeSeen`; `loadSettings` must list every key it keeps): what the companion does, the save it found (continue, or start a new game in its own playthrough), the spoiler level and a tour. Test instances skip it so scripts can drive the views; Settings → "Show the welcome again" (or the `u4-show-welcome` window event) opens it anywhere.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
