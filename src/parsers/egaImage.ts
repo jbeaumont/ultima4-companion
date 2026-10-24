@@ -15,6 +15,7 @@ export const RLE_IMAGES = [
   'SPIRIT.EGA', 'HUMILITY.EGA', 'TRUTH.EGA', 'LOVE.EGA', 'COURAGE.EGA'
 ] as const
 export const LZW_IMAGES = [
+  // the fortune teller's picture: the game's file name, opened as is, never shown (#69)
   'ABACUS.EGA', 'ANIMATE.EGA', 'GYPSY.EGA', 'INSIDE.EGA', 'OUTSIDE.EGA', 'PORTAL.EGA', 'TREE.EGA', 'WAGON.EGA',
   'HONCOM.EGA', 'SACHONOR.EGA', 'SPIRHUM.EGA', 'VALJUS.EGA', 'TITLE.EGA'
 ] as const
