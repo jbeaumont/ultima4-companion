@@ -1,6 +1,7 @@
 import type { BattleState } from '@parsers/battle'
 import type { PartySave } from '@parsers/party'
 import type { HudBounds } from './hudBounds'
+import type { Speed } from './speed'
 
 /**
  * How the state was observed, separate from what it says: which live attachment
@@ -50,6 +51,8 @@ export interface Settings {
   sageEnabled?: boolean
   /** The first-run welcome has been finished or skipped. */
   welcomeSeen?: boolean
+  /** Game speed preset for launches and the live control (#70). */
+  gameSpeed?: Speed
 }
 
 export interface SettingsInfo {
@@ -86,6 +89,8 @@ export const IPC = {
   profilesList: 'profiles:list',
   profileCreate: 'profiles:create',
   setWelcomeSeen: 'settings:welcome-seen',
+  gameSpeedGet: 'speed:get',
+  gameSpeedSet: 'speed:set',
   profileFollow: 'profiles:follow',
   profileSwitch: 'profiles:switch',
   profileRename: 'profiles:rename',

@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { parseHudBounds } from '@shared/hudBounds'
+import { isSpeed } from '@shared/speed'
 import type { Settings } from '@shared/types'
 
 const file = () => join(app.getPath('userData'), 'settings.json')
@@ -16,6 +17,7 @@ export function loadSettings(): Settings {
       if (typeof raw.editorEnabled === 'boolean') out.editorEnabled = raw.editorEnabled
       if (typeof raw.sageEnabled === 'boolean') out.sageEnabled = raw.sageEnabled
       if (typeof raw.welcomeSeen === 'boolean') out.welcomeSeen = raw.welcomeSeen
+      if (isSpeed(raw.gameSpeed)) out.gameSpeed = raw.gameSpeed
       const hud = parseHudBounds(raw.hudBounds)
       if (hud) out.hudBounds = hud
     }

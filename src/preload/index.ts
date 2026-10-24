@@ -9,6 +9,7 @@ import type { SageStatus } from '../main/sage/sageIpc'
 import { IPC } from '@shared/types'
 import type { Journal } from '@shared/journal'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
+import type { Speed } from '@shared/speed'
 
 export type SageDone = { id: string } & ({ ok: true; stopReason: string | null; servedBy: string } | { ok: false; message: string })
 
@@ -27,6 +28,10 @@ const api = {
   setEditorEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setEditorEnabled, on),
   setSageEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setSageEnabled, on),
   setWelcomeSeen: (seen: boolean): Promise<void> => ipcRenderer.invoke(IPC.setWelcomeSeen, seen),
+  /** Game speed preset, and the running game's speed read from its window title. */
+  getGameSpeed: (): Promise<{ speed: Speed; running: number | 'max' | null }> => ipcRenderer.invoke(IPC.gameSpeedGet),
+  /** Save the preset and change the running game's speed with DOSBox's Ctrl+F11/F12 (DOSBox comes to the front). */
+  setGameSpeed: (speed: Speed): Promise<{ ok: true; running: number | 'max' | null } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.gameSpeedSet, speed),
   launchGame: (): Promise<{ ok: true; profile: string } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.launchGame),
   getDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogGet),
   resetDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogReset),

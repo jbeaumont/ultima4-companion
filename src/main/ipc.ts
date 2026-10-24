@@ -21,6 +21,10 @@ import { TEST_MODE, overlayDir, saveLocationFor, testRoot } from './mode'
 import { cp, mkdir, rm } from 'node:fs/promises'
 import { realOverlay } from './saveLocation'
 import { SAVE_FILES } from './saves/snapshots'
+import { DEFAULT_SPEED, SPEEDS, isSpeed } from '@shared/speed'
+import type { Speed } from '@shared/speed'
+import { SpeedRefused, runningCycles, setRunningCycles } from './dosboxSpeed'
+import { dosboxProcesses, isTestDosbox } from './memory/win32'
 
 let source: HybridSource | null = null
 let gameDir: string | null = null
@@ -213,10 +217,31 @@ export async function setupIpc(): Promise<void> {
     if (!gameDir) return { ok: false, message: 'Ultima IV install not found.' }
     const profile = TEST_MODE ? 'test' : 'play'
     try {
-      await launchGame({ profile, gameDir, overlayDir: overlayDir(gameDir), confDir: app.getPath('userData') })
+      // the test profile keeps its turbo speed; play starts at the chosen preset
+      const cycles = TEST_MODE ? undefined : SPEEDS[loadSettings().gameSpeed ?? DEFAULT_SPEED]
+      await launchGame({ profile, gameDir, overlayDir: overlayDir(gameDir), confDir: app.getPath('userData'), ...(cycles ? { cycles } : {}) })
       return { ok: true, profile }
     } catch (err) {
       return { ok: false, message: err instanceof LaunchRefused ? err.message : `Could not start DOSBox: ${(err as Error).message}` }
+    }
+  })
+
+  // game speed (#70): the preset for launches, applied live to this instance's running game
+  const ourGame = async (): Promise<number | null> =>
+    (await dosboxProcesses()).find((p) => isTestDosbox(p.commandLine) === TEST_MODE)?.pid ?? null
+  ipcMain.handle(IPC.gameSpeedGet, async (): Promise<{ speed: Speed; running: number | 'max' | null }> => {
+    const pid = await ourGame()
+    return { speed: loadSettings().gameSpeed ?? DEFAULT_SPEED, running: pid ? runningCycles(pid) : null }
+  })
+  ipcMain.handle(IPC.gameSpeedSet, async (_e, speed: unknown): Promise<{ ok: true; running: number | 'max' | null } | { ok: false; message: string }> => {
+    if (!isSpeed(speed)) return { ok: false, message: 'Unknown speed.' }
+    saveSettings({ gameSpeed: speed })
+    const pid = await ourGame()
+    if (!pid) return { ok: true, running: null } // used at the next launch
+    try {
+      return { ok: true, running: await setRunningCycles(pid, SPEEDS[speed]) }
+    } catch (err) {
+      return { ok: false, message: err instanceof SpeedRefused ? err.message : `Could not change the speed: ${(err as Error).message}` }
     }
   })
 

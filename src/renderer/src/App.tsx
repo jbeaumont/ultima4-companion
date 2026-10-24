@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BattlePanel } from './components/BattlePanel'
 import { Welcome } from './components/Welcome'
+import { GameSpeed } from './components/GameSpeed'
 import type { SettingsInfo } from '@shared/types'
 import { useGameState } from './useGameState'
 import { Dashboard } from './views/Dashboard'
@@ -79,6 +80,7 @@ export function App() {
           {testMode ? 'Launch test game (turbo)' : 'Play Ultima IV'}
         </button>
         {launchMsg && <p className={`result small ${launchMsg.ok ? 'ok' : 'error'}`}>{launchMsg.text}</p>}
+        <GameSpeed />
         <button className="hud-btn pop-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
       </nav>
       <main className="content">

@@ -77,6 +77,15 @@ export function foregroundTitle(): string {
   return String.fromCharCode(...b.slice(0, n))
 }
 
+/** The DOSBox window's title, which shows the CPU speed ("Cpu speed: 3000 cycles"). */
+export function dosboxTitle(pid: number): string {
+  const h = findDosboxWindow(pid)
+  if (!h) return ''
+  const b = new Uint16Array(256)
+  const n = GetWindowTextW(h, b, 256)
+  return String.fromCharCode(...b.slice(0, n))
+}
+
 /** Whether `hwnd` is the foreground window. SDL 1.2 ignores keys unless it is. */
 export function hasFocus(hwnd: unknown): boolean {
   const fg = GetForegroundWindow()
