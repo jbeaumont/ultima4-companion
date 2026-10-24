@@ -47,6 +47,13 @@
     ],
     "dialogueUnlocked": [
       5
-    ]
+    ],
+    "sourceLabel": "Game closed · last save"
+  },
+  "observation": {
+    "session": "save",
+    "sequence": 0,
+    "observedAt": 0,
+    "status": "detached"
   }
 }
