@@ -64,3 +64,45 @@ describe('hints match the game', () => {
     })
   })
 })
+
+// U4_USE.C D_010E (stone bits per altar room), D_261A (the dungeons each room joins), the
+// Abyss altars (level z asks for virtue z and stone z), the entrance at 233,233 (bell, book,
+// candle in order) and U4_END.C (the word, the eight virtues, truth/love/courage, infinity)
+const STONES = ['blue', 'yellow', 'red', 'green', 'orange', 'purple', 'white', 'black']
+const ALTAR_ROOMS: [string, number[], string[]][] = [
+  ['Truth', [6, 5, 3, 0], ['Deceit', 'Shame', 'Hythloth', 'Wrong']],
+  ['Love', [6, 4, 3, 1], ['Despise', 'Wrong', 'Hythloth', 'Covetous']],
+  ['Courage', [6, 5, 4, 2], ['Destard', 'Covetous', 'Hythloth', 'Shame']]
+]
+
+describe('quest endgame hints match the game', () => {
+  const answer = (id: string) => HINTS.find((h) => h.id === id)!.tiers[2]
+
+  it('each altar room takes the right four stones and joins the right dungeons', () => {
+    const text = answer('altar-rooms')
+    for (const [key, stones, dungeons] of ALTAR_ROOMS) {
+      const part = new RegExp(`${key}: ([^(]*)\\(via ([^)]*)\\)`).exec(text)!
+      expect(part, key).toBeTruthy()
+      expect(part[1]!.split(/[ ,]+/).filter(Boolean).sort(), key).toEqual(stones.map((i) => STONES[i]).sort())
+      expect(part[2]!.split(/, | or /).sort(), key).toEqual([...dungeons].sort())
+    }
+    expect(text).toMatch(/middle of the room/)
+  })
+
+  it("the Abyss altars ask for each level's virtue, then its stone", () => {
+    const text = answer('abyss-altars')
+    VIRTUES.forEach((v, z) => {
+      expect(text.toLowerCase(), `level ${z + 1}`).toContain(`${z + 1} ${v}, ${STONES[z]}`)
+    })
+  })
+
+  it('the entrance takes the bell, book and candle in that order; the word and the axiom', () => {
+    expect(answer('abyss-entry')).toMatch(/bell, then the book, then the candle/)
+    expect(answer('word-of-passage')).toContain('VERAMOCOR')
+    expect(answer('codex')).toMatch(/INFINITY/)
+    // the three lords say the three syllables
+    expect(says('The Lycaeum', 'Robert Frasier')).toMatch(/'ver'/i)
+    expect(says('Empath Abbey', 'Lord Robert')).toMatch(/'amo'/i)
+    expect(says("Serpent's Hold", 'Sentri')).toMatch(/'cor'/i)
+  })
+})
