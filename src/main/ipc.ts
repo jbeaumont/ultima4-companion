@@ -111,8 +111,10 @@ export async function setupIpc(): Promise<void> {
     liveMemory: loadSettings().liveMemory !== false,
     attachedPid: source?.attachment()?.pid ?? null,
     editorEnabled: loadSettings().editorEnabled === true,
-    sageEnabled: loadSettings().sageEnabled === true
+    sageEnabled: loadSettings().sageEnabled === true,
+    welcomeSeen: loadSettings().welcomeSeen === true
   }))
+  ipcMain.handle(IPC.setWelcomeSeen, (_e, seen: unknown) => saveSettings({ welcomeSeen: seen !== false }))
 
   ipcMain.handle(IPC.setLiveMemory, async (_e, on: unknown): Promise<GameState | null> => {
     saveSettings({ liveMemory: on === true })

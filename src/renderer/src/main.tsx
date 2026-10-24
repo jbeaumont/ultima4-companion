@@ -16,6 +16,7 @@ import './styles/sage.css'
 import './styles/settings.css'
 import './styles/snapshots.css'
 import './styles/tracker.css'
+import './styles/welcome.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
