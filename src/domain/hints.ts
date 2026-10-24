@@ -316,7 +316,7 @@ export const HINTS: HintTopic[] = [
     tiers: [
       'Three altar rooms connect the bottom levels of all eight dungeons.',
       'Each altar room takes four stones, and each gives one part of a three-part key: Truth, Love and Courage.',
-      'Truth: white, purple, green, blue (via Deceit, Shame, Wrong or Hythloth). Love: white, yellow, green, orange (via Despise, Wrong, Covetous or Hythloth). Courage: white, red, purple, orange (via Destard, Covetous, Shame or Hythloth). Use the stones on the altar.'
+      'Truth: white, purple, green, blue (via Deceit, Shame, Wrong or Hythloth). Love: white, yellow, green, orange (via Despise, Wrong, Covetous or Hythloth). Courage: white, red, purple, orange (via Destard, Covetous, Shame or Hythloth). Stand on the altar in the middle of the room, use the stones and name the four colours.'
     ],
     solvedBy: ['keyT', 'keyL', 'keyC'],
     sources: [{ location: "Lord British's Castle", npc: 'Water' }, { location: "Serpent's Hold", npc: 'Shyra' }, { location: 'Jhelom', npc: 'Bengrod' }, { location: 'The Lycaeum', npc: 'Tymus' }]
@@ -342,8 +342,8 @@ export const HINTS: HintTopic[] = [
     category: 'abyss',
     tiers: [
       'Each level of the Abyss has an altar that asks for a stone.',
-      'The stones are asked for in virtue order, one per level.',
-      'Level 1 blue, 2 yellow, 3 red, 4 green, 5 orange, 6 purple, 7 white, 8 black.'
+      'Each altar first asks which virtue stems from Truth, Love or Courage (or two or three of them), then for that virtue\'s stone, one level at a time.',
+      'Use the stones at each altar, name the level\'s virtue, then its stone: 1 Honesty, blue; 2 Compassion, yellow; 3 Valor, red; 4 Justice, green; 5 Sacrifice, orange; 6 Honor, purple; 7 Spirituality, white; 8 Humility, black.'
     ],
     after: ['altar-rooms', 'abyss-entry']
   },

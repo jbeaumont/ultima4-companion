@@ -1,0 +1,54 @@
+{
+  "name": "Abyss entrance holding the bell, book and candle",
+  "verifiedLive": "scripts/hillclimb/item.ts abyss, bell, book and candle checkpoints, 2026-10-23",
+  "state": {
+    "location": 0,
+    "x": 233,
+    "y": 233,
+    "moves": 500,
+    "runes": 255,
+    "stones": 255,
+    "karma": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "members": [
+      {
+        "name": "Avatar",
+        "hp": 800,
+        "hpMax": 800,
+        "xp": 5000,
+        "classIndex": 0,
+        "status": "G"
+      }
+    ],
+    "food": 30000,
+    "items": 28
+  },
+  "knowledge": {
+    "spoilerLevel": "nudges",
+    "revealed": {},
+    "visited": []
+  },
+  "expect": {
+    "checklistDone": [
+      "bell",
+      "book",
+      "candle"
+    ],
+    "solved": [
+      "item-bell",
+      "item-book",
+      "item-candle"
+    ],
+    "notSolved": [
+      "abyss-entry"
+    ]
+  }
+}
