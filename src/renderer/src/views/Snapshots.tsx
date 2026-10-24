@@ -9,8 +9,9 @@ const REASONS: Record<SnapshotReason, string> = {
 
 const when = (t: number) => new Date(t).toLocaleString()
 
-function Row({ m, busy, outcome, onRestore, onDelete }: {
+function Row({ m, active, busy, outcome, onRestore, onDelete }: {
   m: SnapshotMeta
+  active: string
   busy: boolean
   outcome: Outcome | undefined
   onRestore: (id: string) => void
@@ -24,6 +25,9 @@ function Row({ m, busy, outcome, onRestore, onDelete }: {
           <strong>{when(m.createdAt)}</strong>
           <span className={`reason r-${m.reason}`}>{REASONS[m.reason]}</span>
           {m.label && <span className="snap-label">{m.label}</span>}
+          {m.playthrough && m.playthrough.id !== active && (
+            <span className="snap-other" title="Taken while another playthrough was active">from {m.playthrough.name}</span>
+          )}
         </div>
         <div className="muted small">
           {s ? `${s.names.join(', ')} · ${s.location} (${s.x},${s.y}) · ${s.moves} moves · ${s.avatarCount}/8 Avatarhoods` : 'No readable party data'}
@@ -42,6 +46,8 @@ export function Snapshots() {
   const [list, setList] = useState<SnapshotMeta[]>([])
   const [label, setLabel] = useState('')
   const [hideAuto, setHideAuto] = useState(false)
+  const [mineOnly, setMineOnly] = useState(true)
+  const [active, setActive] = useState('')
   const [busy, setBusy] = useState(false)
   const [takeNote, setTakeNote] = useState<Outcome | null>(null)
   const [rowNotes, setRowNotes] = useState<Record<string, Outcome>>({})
@@ -49,13 +55,19 @@ export function Snapshots() {
   useEffect(() => {
     let live = true
     window.u4.listSnapshots().then((l) => { if (live) setList(l) }, () => undefined)
+    window.u4.listProfiles().then((p) => { if (live) setActive(p.active) }, () => undefined)
     const off = window.u4.onSnapshots(setList)
     return () => { live = false; off() }
   }, [])
 
+  // snapshots from before playthroughs existed carry no tag and show everywhere
+  const others = list.filter((m) => m.playthrough && m.playthrough.id !== active).length
   const shown = useMemo(
-    () => list.filter((m) => !(hideAuto && m.reason === 'auto')).sort((a, b) => b.createdAt - a.createdAt),
-    [list, hideAuto]
+    () => list
+      .filter((m) => !(hideAuto && m.reason === 'auto'))
+      .filter((m) => !(mineOnly && m.playthrough && m.playthrough.id !== active))
+      .sort((a, b) => b.createdAt - a.createdAt),
+    [list, hideAuto, mineOnly, active]
   )
 
   const take = async () => {
@@ -98,7 +110,8 @@ export function Snapshots() {
         <p className="small">
           Ultima IV has a single save slot. The companion copies your save every time it changes. Restoring a snapshot
           backs up your current save first, so it can be undone. Restoring needs DOSBox to be closed, and you will be
-          asked to confirm in a dialog.
+          asked to confirm in a dialog. Each snapshot records the playthrough that was active; restoring another
+          playthrough's save asks again, since this playthrough's journal and map stay loaded.
         </p>
         <form className="snap-take" onSubmit={(e) => { e.preventDefault(); void take() }}>
           <input
@@ -113,14 +126,19 @@ export function Snapshots() {
         <label>
           <input type="checkbox" checked={hideAuto} onChange={(e) => setHideAuto(e.target.checked)} /> Hide auto snapshots
         </label>
+        {others > 0 && (
+          <label>
+            <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> This playthrough only ({others} from others)
+          </label>
+        )}
         <span className="muted small">{shown.length} of {list.length}</span>
       </div>
       {shown.length === 0 ? (
-        <p className="muted">{list.length === 0 ? 'No snapshots yet.' : 'Only auto snapshots exist; untick the filter to see them.'}</p>
+        <p className="muted">{list.length === 0 ? 'No snapshots yet.' : 'None match the filters; untick them to see the rest.'}</p>
       ) : (
         <ul className="snaps">
           {shown.map((m) => (
-            <Row key={m.id} m={m} busy={busy} outcome={rowNotes[m.id]} onRestore={restore} onDelete={remove} />
+            <Row key={m.id} m={m} active={active} busy={busy} outcome={rowNotes[m.id]} onRestore={restore} onDelete={remove} />
           ))}
         </ul>
       )}

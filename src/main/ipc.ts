@@ -182,10 +182,15 @@ export async function setupIpc(): Promise<void> {
   ipcMain.handle(IPC.journalSave, (_e, j: unknown) => saveJournal(j))
 
   setupSageIpc(join(app.getPath('userData'), 'sage-key.bin'), () => source?.getState() ?? null, send)
-  const store = new SnapshotStore(join(app.getPath('userData'), 'snapshots'))
+  const playthrough = () => {
+    const p = profiles().active()
+    return { id: p.id, name: p.name, ...(p.avatar ? { avatar: p.avatar } : {}) }
+  }
+  const store = new SnapshotStore(join(app.getPath('userData'), 'snapshots'), playthrough)
   autoSnapshot = setupSavesIpc(() => ({
     loc: gameDir ? saveLocationFor(gameDir) : null,
     store,
+    playthrough,
     testRoot: gameDir ? testRoot(gameDir) : ''
   }), send).autoSnapshot
 
