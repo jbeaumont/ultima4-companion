@@ -9,13 +9,21 @@ import type { SimState } from '@domain/talkSim'
 import { newClueId } from '@shared/format'
 import type { Clue } from '@shared/journal'
 import type { GameState } from '@shared/types'
+import { rewordFields } from '@shared/wording'
 import dialogueJson from '../../../../data/dialogue.json'
 import { useJournal } from '../useJournal'
 
-type Npc = Conversation & { position: { x: number; y: number; floor: number }; tile: number }
+type Npc = Conversation & { position: { x: number; y: number; floor: number }; tile: number; reworded?: boolean }
 interface Town { locationId: number; location: string; npcs: Npc[] }
 
-const TOWNS = dialogueJson as unknown as Town[]
+// game text is shown reworded where the game uses a slur (src/shared/wording.ts)
+const TOWNS = (dialogueJson as unknown as Town[]).map((t) => ({
+  ...t,
+  npcs: t.npcs.map((n) => {
+    const { value, changed } = rewordFields(n)
+    return changed ? { ...value, reworded: true } : n
+  })
+}))
 const LEADS = new Set(HINTS.flatMap((h) => h.sources ?? []).map((s) => `${s.location}|${s.npc}`))
 
 interface Sel { locationId: number; index: number }
@@ -231,7 +239,10 @@ export function Dialogue({ state }: { state: GameState | null }) {
                         {lead(town, n) && <span className="lead" title="Gives a clue for a hint topic">★ quest lead</span>}
                         {talked(town, n) && <span className="talked" title="You have talked to this person">✓ talked</span>}
                       </div>
-                      <div className="muted small">{flat(n.description)}</div>
+                      <div className="muted small">
+                        {flat(n.description)}
+                        {n.reworded && <span title="The game uses an ethnic slur here; the companion shows &quot;fortune teller&quot; instead."> (reworded)</span>}
+                      </div>
                       <div className="small">{flat(n.job)}</div>
                     </button>
                   ))}
