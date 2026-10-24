@@ -9,6 +9,7 @@ import type { SpoilerLevel } from '@domain/hints'
 import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { nextSteps } from '@domain/guidance'
+import { disclosure } from '@domain/spoilers'
 import { hawkwindBand } from '@domain/hawkwind'
 import { partyAlerts } from '@domain/partyCondition'
 import { canSaveHere } from '@domain/unsaved'
@@ -238,7 +239,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
   const art = useDashboardArt(state?.gameDir ?? null)
   const { journal } = useJournal()
   // hold nudges back until the journal has loaded, so nothing flashes past an 'off' setting
-  const nudges = (journal?.spoilerLevel ?? 'off') !== 'off'
+  const towns = disclosure(journal?.spoilerLevel ?? 'off').companionTowns
   if (!p) {
     return (
       <>
@@ -259,7 +260,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
         <Next p={p} level={journal ? journal.spoilerLevel : 'off'} onOpen={() => onNavigate('Hints')} />
         <Timers p={p} />
       </aside>
-      <Companions p={p} art={art} towns={nudges} />
+      <Companions p={p} art={art} towns={towns} />
     </div>
   )
 }

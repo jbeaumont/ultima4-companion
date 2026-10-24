@@ -26,6 +26,11 @@ Full roadmap: see the "Milestones" section of README.md.
 - PARTY.SAV x,y is the position on the current map (surface, town or dungeon 0-7); 0x1EE/0x1EF are the surface return position (u4-decompiled `out_x/out_y`), not dungeon coords as xu4 FileFormats.md says
 - In memory the game keeps PARTY.SAV byte-for-byte as `struct tParty Party` (0x1F6 bytes, u4-decompiled U4.H)
 
+## Spoilers
+- One policy decides what each hint level shows: `src/domain/spoilers.ts` (`disclosure(level)`, `shownTiers`, `townShown`, `cellShown`). Views and the Sage ask it; never compare spoiler levels in a view. `tests/spoilers.test.ts` checks every surface against it.
+- Off is strict: no hint text, leads, hidden places or deed guide, and the Sage gives fixed counsel without calling the model. Nudges and Full are best effort for the Sage (instructions plus filtered hints), and the UI says so.
+- Explicit reveals are capped by the level; discovered knowledge (solved topics, visited towns, seen cells) shows at any level that shows hints.
+
 ## Playthroughs
 - The journal and explored-map files belong to the active playthrough profile: `<userData>/profiles/<id>/` (`src/main/profiles.ts`, `profileSession.ts`); `profiles.json` lists them. The first run moved the old files there and kept `*.pre-profiles` copies. Settings, snapshots and the Sage key stay global.
 - Switching (Settings → Playthroughs) writes out the fog, loads the other profile's journal and fog, and reloads the window. Each profile records its Avatar's name; the Dashboard flags a save for a different character.

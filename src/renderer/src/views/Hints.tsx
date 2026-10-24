@@ -4,6 +4,7 @@ import type { HintCategory, HintTopic, SpoilerLevel } from '@domain/hints'
 import { progress } from '@domain/progress'
 import type { Progress } from '@domain/progress'
 import { flat } from '@domain/talkSim'
+import { disclosure } from '@domain/spoilers'
 import { LOCATIONS } from '@domain/constants'
 import { metKey } from '@shared/journal'
 import type { GameState } from '@shared/types'
@@ -40,7 +41,7 @@ interface CardProps {
 const locationId = (name: string): number => Number(Object.entries(LOCATIONS).find(([, l]) => l.name === name)?.[0] ?? 0)
 
 function TopicCard({ topic, level, revealed, solved, onReveal, met }: CardProps) {
-  const tiers = visibleTiers(topic, level, revealed)
+  const tiers = visibleTiers(topic, level, revealed, solved)
   const sources = topic.sources ?? []
   return (
     <div className="card hint">
@@ -53,7 +54,7 @@ function TopicCard({ topic, level, revealed, solved, onReveal, met }: CardProps)
           <span className="tier-label">{TIER_LABELS[i]}</span> {t}
         </div>
       ))}
-      {tiers.length >= 2 && sources.length > 0 && (
+      {tiers.length >= 2 && disclosure(level).questLeads && sources.length > 0 && (
         <div className="small muted">
           Who to ask: {sources.map((s) => `${flat(s.npc)} (${s.location})${met.has(metKey(locationId(s.location), flat(s.npc))) ? ' ✓ talked' : ''}`).join(', ')}
         </div>
@@ -106,7 +107,7 @@ export function Hints({ state }: { state: GameState | null }) {
           ))}
         </div>
         <p className="muted small">{LEVELS.find((l) => l.id === level)?.blurb}</p>
-        {level === 'off' && <p className="note">Spoilers are off: only titles and solved state are shown. Pick a higher level above to reveal hints.</p>}
+        {disclosure(level).hintTiers === 0 && <p className="note">Spoilers are off: only titles and solved state are shown, and the sage gives only fixed, spoiler-free counsel. Pick a higher level above to reveal hints.</p>}
         {!party && <p className="muted small">No party yet, so nothing can be marked solved.</p>}
       </section>
 

@@ -3,6 +3,7 @@ import { metKey } from '@shared/journal'
 import type { Conversation } from '@parsers/talk'
 import { LOCATIONS } from '@domain/constants'
 import { HINTS, dialogueUnlocked } from '@domain/hints'
+import { disclosure } from '@domain/spoilers'
 import { flat, intro, reply, startSim, transcript } from '@domain/talkSim'
 import type { SimState } from '@domain/talkSim'
 import { newClueId } from '@shared/format'
@@ -142,7 +143,7 @@ export function Dialogue({ state }: { state: GameState | null }) {
   const current: Sel | null = sel ?? (hereTown && unlocked(here) ? { locationId: here, index: hereTown.npcs[0]?.index ?? 0 } : null)
   const town = current && unlocked(current.locationId) ? TOWNS.find((t) => t.locationId === current.locationId) : undefined
   const npc = town?.npcs.find((n) => n.index === current?.index)
-  const showLeads = journal.spoilerLevel !== 'off'
+  const showLeads = disclosure(journal.spoilerLevel).questLeads
 
   const toggleAll = (on: boolean): void => {
     if (on && !window.confirm('Reveal every town\'s dialogue, including towns you have not visited yet? This can spoil quest clues.')) return
