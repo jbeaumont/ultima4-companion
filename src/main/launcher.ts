@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { CYCLE_STEP } from '@shared/speed'
 import { dosboxProcesses, isTestDosbox } from './memory/win32'
 
 export type LaunchProfile = 'play' | 'test'
@@ -17,7 +18,10 @@ export interface LaunchOptions {
   overlayDir: string
   /** Where the generated config is written (the companion's userData). */
   confDir: string
+  /** CPU speed in DOSBox cycles; default: GOG's 500 for play, max for test. */
+  cycles?: number | 'max'
 }
+
 
 export const TEST_WINDOW = { x: 0, y: 0, width: 960, height: 600 }
 
@@ -36,8 +40,11 @@ export function buildConf(o: Omit<LaunchOptions, 'confDir'>): string {
     'aspect=false',
     'frameskip=0',
     '[cpu]',
-    // test: as fast as the host allows; play: keep GOG's authentic speed (base config)
-    ...(test ? ['core=dynamic', 'cycles=max'] : []),
+    // test: as fast as the host allows unless asked; play: the chosen speed (GOG's 500 by default)
+    ...(test ? ['core=dynamic'] : []),
+    ...(o.cycles !== undefined ? [`cycles=${o.cycles}`] : test ? ['cycles=max'] : []),
+    `cycleup=${CYCLE_STEP}`,
+    `cycledown=${CYCLE_STEP}`,
     '[autoexec]',
     '@ECHO OFF',
     `mount C "${o.gameDir}"`,

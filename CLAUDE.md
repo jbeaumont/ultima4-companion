@@ -43,6 +43,10 @@ Full roadmap: see the "Milestones" section of README.md.
 ## First run
 - `src/renderer/src/components/Welcome.tsx` shows once (`settings.welcomeSeen`; `loadSettings` must list every key it keeps): what the companion does, the save it found (continue, or start a new game in its own playthrough), the spoiler level and a tour. Test instances skip it so scripts can drive the views; Settings → "Show the welcome again" (or the `u4-show-welcome` window event) opens it anywhere.
 
+## Game speed
+- Presets in `src/shared/speed.ts` (Original 500 = GOG's, Faster 3000 = default, Fast 10000). The play profile starts at the saved preset with `cycleup/cycledown=500`; the test profile stays at max. Measured (`scripts/hillclimb/speed.ts`): idle turns are real-time (one per 30 s at any speed); moons change 8/11/19/117 times per 30 s at 500/3000/10000/max.
+- Live change (sidebar Game speed): `src/main/dosboxSpeed.ts` reads the speed from DOSBox's title and presses Ctrl+F11/F12 with real keystrokes (the play video driver ignores posted messages), only after confirming DOSBox is the foreground window. Compare koffi window handles with `koffi.address`, never `===`. `npx tsx scripts/hillclimb/speed-live.ts [--companion]` checks it against the play video driver.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI

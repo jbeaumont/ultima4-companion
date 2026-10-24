@@ -95,3 +95,8 @@ a.btn { text-decoration: none; display: inline-block; }
 .unsaved-chip .unsaved-hint { font-weight: 400; }
 .unsaved-chip.compact { font-size: 11px; white-space: nowrap; }
 .talked { font-size: 11px; color: #5fdc8f; margin-left: 6px; }
+
+.speed-ctl { margin: 8px 0 4px; }
+.speed-label { margin-bottom: 4px; }
+.speed-btns { display: flex; gap: 4px; }
+.speed-btns .btn { flex: 1; padding-left: 4px; padding-right: 4px; }
