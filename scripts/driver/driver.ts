@@ -13,6 +13,10 @@ import type { BattleMonster } from '../../src/parsers/battle'
 import type { CombatAction, CombatView, Point } from '../../src/domain/combatPlan'
 import { DNG_SIZE, ENERGY_FIELD, dungeonPath, dungeonPlan, roomExits, stepDir, stepKeys } from '../../src/domain/dungeonRoute'
 import { parseDng } from '../../src/parsers/dungeon'
+import { parseTlk } from '../../src/parsers/talk'
+import type { Conversation } from '../../src/parsers/talk'
+import { reply, startSim } from '../../src/domain/talkSim'
+import type { SimState } from '../../src/domain/talkSim'
 import { LOCATIONS } from '../../src/domain/constants'
 import { looksLikeParty } from '../../src/main/memory/scan'
 import { scanProcess } from '../../src/main/memory/memorySource'
@@ -34,6 +38,7 @@ const DS = {
   dungeonMap: 0x8742, // D_8742._map: x8x8x8[z][y][x] in a dungeon, x32x32 in a town
   activeCharaX: 0x080a, // -1 except while a member's command is being taken
   roomExitX: 0x96ee,
+  talk: 0x95ce, // D_95CE: the TLK record of the person being (or last) talked to
   roomExitY: 0x96f4
 }
 export const MODE = { vision: 0, outdoors: 1, building: 2, dungeon: 3, combat: 4, camp: 5, room: 6, shrine: 7 } as const
@@ -447,6 +452,99 @@ export class GameDriver {
     const out: { slot: number; tile: number; x: number; y: number; talk: number }[] = []
     for (let i = 0; i < 32; i++) if (n[0x60 + i]) out.push({ slot: i, tile: n[0x60 + i]!, x: n[0x20 + i]!, y: n[0x40 + i]!, talk: n[0xe0 + i]! })
     return out
+  }
+
+  // ---- conversations and spells -------------------------------------------
+
+  private talkState: { conv: Conversation; sim: SimState } | null = null
+
+  /** The record of the person last talked to (D_95CE: the game answers from it), or null. */
+  conversation(): Conversation | null {
+    const t = this.ds(DS.talk, 0x120)
+    return t.some((b) => b !== 0) ? parseTlk(t)[0] ?? null : null
+  }
+
+  /**
+   * Walk up to the person with this talk index (people wander, so re-check where
+   * they are) and start talking (T, then the direction). Resolves to their record.
+   */
+  async talkTo(talkIndex: number, maxTries = 12): Promise<Conversation> {
+    const before = this.ds(DS.talk, 0x120)
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const npc = this.npcs().find((n) => n.talk === talkIndex)
+      if (!npc) throw new DriverError(`Nobody with talk index ${talkIndex} here`)
+      const s = this.state()
+      const dx = npc.x - s.x, dy = npc.y - s.y
+      if (Math.abs(dx) + Math.abs(dy) === 1) {
+        this.key('t')
+        await sleep(200)
+        this.key(dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down')
+        // the conversation has started once the game has loaded their record
+        const until = Date.now() + 2500
+        while (Date.now() < until) {
+          await sleep(50)
+          const now = this.ds(DS.talk, 0x120)
+          if (now.some((b, i) => b !== before[i])) break
+        }
+        await sleep(300)
+        const conv = this.conversation()
+        if (!conv) throw new DriverError('The conversation did not start')
+        this.talkState = { conv, sim: startSim() }
+        return conv
+      }
+      // step next to them (try each side; they may move meanwhile)
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+        try {
+          await this.walkTo(npc.x + ox, npc.y + oy, 60)
+          break
+        } catch {
+          // that side is blocked: try another
+        }
+      }
+    }
+    throw new DriverError(`Could not reach talk index ${talkIndex}`)
+  }
+
+  /** Say a keyword; returns what the game answers (from the person's record, by the game's rules). */
+  async ask(keyword: string): Promise<string[]> {
+    if (!this.talkState) throw new DriverError('Not talking to anyone')
+    const r = reply(this.talkState.conv, this.talkState.sim, keyword)
+    this.talkState.sim = r.state
+    await this.type(keyword)
+    await sleep(400)
+    // a question follows its trigger keyword after a keypress (U4_TALK.C C_A163)
+    if (r.state.awaitingYesNo) {
+      this.key('space')
+      await sleep(400)
+    }
+    if (r.state.ended) this.talkState = null
+    return r.lines
+  }
+
+  /** Answer the person's yes/no question. */
+  async answer(yes: boolean): Promise<string[]> {
+    return this.ask(yes ? 'y' : 'n')
+  }
+
+  async bye(): Promise<void> {
+    if (this.talkState) await this.ask('bye')
+    await sleep(500)
+  }
+
+  /**
+   * Cast a spell outside battle (U4_SPELL.C): C, the caster's number, the spell
+   * letter, then a member's number or a direction if the spell asks for one.
+   */
+  async castSpell(letter: string, opts: { caster?: number; who?: number; dir?: Dir } = {}): Promise<void> {
+    this.key('c')
+    await sleep(150)
+    this.key(String((opts.caster ?? 0) + 1))
+    await sleep(150)
+    this.key(letter)
+    await sleep(250)
+    if (opts.who !== undefined) this.key(String(opts.who + 1))
+    else if (opts.dir) this.key(opts.dir)
+    await sleep(600)
   }
 
   /** Raw cell under the party. */
