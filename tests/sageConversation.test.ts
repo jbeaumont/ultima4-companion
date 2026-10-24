@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import Anthropic from '@anthropic-ai/sdk'
 import { SageConversation, TRUNCATED_NOTE, describeError } from '../src/main/sage/conversation'
 import type { SageStream } from '../src/main/sage/conversation'
-import { SAGE_HISTORY_CHARS, SAGE_MAX_TOKENS, buildRequest, trimHistory } from '../src/main/sage/request'
+import { SAGE_HISTORY_CHARS, SAGE_MAX_TOKENS, buildRequest, buildTurn, trimHistory } from '../src/main/sage/request'
 import type { SageRequest } from '../src/main/sage/request'
 import { buildSystemPrompt } from '../src/main/sage/prompt'
 
@@ -44,7 +44,26 @@ describe('sage requests', () => {
   it('cap the answer at a few-sentences budget, not 64k', () => {
     const r = buildRequest('hawkwind', 'nudges', [], [{ role: 'user', content: 'hi' }])
     expect(r.max_tokens).toBe(SAGE_MAX_TOKENS)
-    expect(SAGE_MAX_TOKENS).toBeLessThanOrEqual(8000)
+    // measured max 654 (scripts/sage-budget.ts); keep headroom without a runaway answer
+    expect(SAGE_MAX_TOKENS).toBeGreaterThanOrEqual(1500)
+    expect(SAGE_MAX_TOKENS).toBeLessThanOrEqual(4000)
+  })
+
+  it('default to Haiku 5.5, which takes no fallback and gets the state in the user message', () => {
+    const turn = buildTurn('q', 'state')
+    const r = buildRequest('hawkwind', 'nudges', [], turn)
+    expect(r.model).toBe('claude-haiku-5-5')
+    expect(r).not.toHaveProperty('fallbacks')
+    expect(r).not.toHaveProperty('betas')
+    expect(turn).toEqual([{ role: 'user', content: [{ type: 'text', text: 'q' }, { type: 'text', text: 'state' }] }])
+  })
+
+  it('on Opus 5.5, use the fallback and a turn-scoped system message for the state', () => {
+    const turn = buildTurn('q', 'state', 'claude-opus-5-5')
+    const r = buildRequest('hawkwind', 'nudges', [], turn, 'claude-opus-5-5')
+    expect(r).toMatchObject({ model: 'claude-opus-5-5', fallbacks: 'default' })
+    expect(r.betas).toContain('mid-conversation-system-clear-at-2026-08-21')
+    expect(turn[1]).toMatchObject({ role: 'system', content: 'state', clear_at: 'next_user_message' })
   })
 
   it('tell the model to trust the current game state over the conversation', () => {
@@ -131,6 +150,6 @@ describe('sage answers', () => {
     expect(e.out.done[0]).toEqual({ ok: false, message: describeError(new Anthropic.APIConnectionError({ message: 'down' })) })
     expect(c.kept.length).toBe(0)
     await c.ask('2', 'hello', 'hawkwind', 'nudges', null, events().on)
-    expect(c.kept.length).toBe(3)
+    expect(c.kept.length).toBe(buildTurn('hello', 'state').length + 1) // the question (and state) plus the answer
   })
 })

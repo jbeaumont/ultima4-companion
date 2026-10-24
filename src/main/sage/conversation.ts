@@ -7,8 +7,9 @@ import { disclosure } from '@domain/spoilers'
 import { fixedCounsel } from './fixedCounsel'
 import { buildStateMessage } from './prompt'
 import type { Persona } from './prompt'
-import { buildRequest, trimHistory } from './request'
-import type { SageRequest } from './request'
+import { SAGE_MODEL } from './prompt'
+import { buildRequest, buildTurn, trimHistory } from './request'
+import type { SageModel, SageRequest } from './request'
 
 type Message = Anthropic.Beta.BetaMessageParam
 
@@ -35,7 +36,7 @@ export class SageConversation {
   private level: SpoilerLevel = 'nudges'
   private current: { id: string; abort: () => void } | null = null
 
-  constructor(private readonly start: StartStream) {}
+  constructor(private readonly start: StartStream, private readonly model: SageModel = SAGE_MODEL) {}
 
   /** Messages kept for the next question (for tests and diagnostics). */
   get kept(): readonly Message[] {
@@ -69,16 +70,12 @@ export class SageConversation {
       return on.done(id, { ok: true, stopReason: 'end_turn', servedBy: 'fixed counsel (hints off)' })
     }
 
-    const turn: Message[] = [
-      { role: 'user', content: text },
-      // per-turn state: shown for this turn only, kept in history unchanged (append-only)
-      { role: 'system', content: buildStateMessage(state?.party ?? null, state?.source ?? null, level), clear_at: 'next_user_message' }
-    ]
+    const turn = buildTurn(text, buildStateMessage(state?.party ?? null, state?.source ?? null, level), this.model)
 
     let aborted = false
     this.current = { id, abort: () => (aborted = true) }
     try {
-      const stream = await this.start(buildRequest(persona, level, this.history, turn))
+      const stream = await this.start(buildRequest(persona, level, this.history, turn, this.model))
       this.current = { id, abort: () => stream.abort() }
       if (aborted) stream.abort()
       stream.on('text', (delta) => on.delta(id, delta))
