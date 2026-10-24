@@ -40,6 +40,8 @@ const api = {
   listProfiles: (): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profilesList),
   createProfile: (name: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileCreate, name),
   switchProfile: (id: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileSwitch, id),
+  /** Follow the character now in the game in the active playthrough (it was waiting for a new game). */
+  followAvatar: (): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileFollow),
   renameProfile: (id: string, name: string): Promise<ProfileIndex> => ipcRenderer.invoke(IPC.profileRename, id, name),
   seedTestSaves: (from: 'real' | 'empty'): Promise<{ ok: true } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.seedTestSaves, from),
   listSnapshots: (): Promise<SnapshotMeta[]> => ipcRenderer.invoke(IPC.snapshotsList),

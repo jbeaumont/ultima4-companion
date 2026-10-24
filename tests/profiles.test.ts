@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProfileStore } from '../src/main/profiles'
-import { DEFAULT_PROFILE, differentAvatar, normalizeIndex, profileId } from '@shared/profiles'
+import { DEFAULT_PROFILE, adoption, differentAvatar, normalizeIndex, profileId } from '@shared/profiles'
 
 const temp = () => mkdtemp(join(tmpdir(), 'u4c-profiles-'))
 
@@ -53,6 +53,41 @@ describe('profile store', () => {
     expect(differentAvatar(store.active(), 'Danny')).toBe(false)
   })
 
+  it("a new playthrough waits for a new game instead of adopting the save's character (#67)", async () => {
+    const base = await temp()
+    const store = new ProfileStore(base)
+    await store.init()
+    await store.noteAvatar('Danny', 42)
+    const fresh = await store.create('Second run', { avatar: 'Danny', moves: 42 })
+    await store.switchTo(fresh.id)
+    // still Danny from the old save: not adopted, however long it is seen
+    expect(store.waiting('Danny', 50)).toBe(true)
+    expect(await store.noteAvatar('Danny', 50)).toBe(false)
+    expect(store.active().avatar).toBeUndefined()
+    // a new game: Initiate New Game resets the moves, even under the same name
+    expect(store.waiting('Danny', 1)).toBe(false)
+    expect(await store.noteAvatar('Danny', 1)).toBe(true)
+    expect(store.active()).toMatchObject({ avatar: 'Danny' })
+    expect(store.active().waitingFor).toBeUndefined()
+    // kept across restarts
+    const again = new ProfileStore(base)
+    await again.init()
+    expect(again.active().avatar).toBe('Danny')
+  })
+
+  it('adopts a newly named character, or the old one when the player chooses to follow it', async () => {
+    const store = new ProfileStore(await temp())
+    await store.init()
+    const a = await store.create('A', { avatar: 'Danny', moves: 42 })
+    await store.switchTo(a.id)
+    expect(await store.noteAvatar('Danno', 1)).toBe(true)
+    const b = await store.create('B', { avatar: 'Danno', moves: 5 })
+    await store.switchTo(b.id)
+    expect(store.waiting('Danno', 9)).toBe(true)
+    expect(await store.follow('Danno')).toBe(true)
+    expect(store.waiting('Danno', 9)).toBe(false)
+  })
+
   it('recovers from a damaged index without losing the playthroughs folder', async () => {
     const base = await temp()
     await writeFile(join(base, 'profiles.json'), '{ not json')
@@ -65,6 +100,15 @@ describe('profile model', () => {
   it('normalizes what is on disk', () => {
     const i = normalizeIndex({ active: 'gone', profiles: [{ id: 'a', name: ' A ' }, { id: 'a', name: 'dup' }, { id: 'Bad Id' }, 7] })
     expect(i).toEqual({ active: 'a', profiles: [{ id: 'a', name: 'A', createdAt: 0 }] })
+  })
+  it('older playthroughs without a note never adopt a character another one owns', () => {
+    const main = { id: 'main', name: 'Main', createdAt: 0, avatar: 'Danny' }
+    const old = { id: 'old', name: 'Old', createdAt: 0 }
+    expect(adoption(old, [main, old], 'Danny', 500)).toBe('wait')
+    expect(adoption(old, [main, old], 'Sam', 1)).toBe('adopt')
+    expect(adoption(main, [main, old], 'Sam', 1)).toBe('has')
+    expect(normalizeIndex({ active: 'x', profiles: [{ id: 'x', name: 'X', waitingFor: { avatar: 'Danny', moves: 3 } }] }).profiles[0]!.waitingFor)
+      .toEqual({ avatar: 'Danny', moves: 3 })
   })
   it('makes unique ids from names', () => {
     expect(profileId('Second run!', ['second-run'])).toBe('second-run-2')
