@@ -181,7 +181,7 @@ export function Sage({ onNavigate }: Props) {
         </div>
       </div>
       <p className="muted small">
-        {model ? `Model: ${model}. ` : ''}Answers use your game state and the hint tiers your spoiler level allows. Requests are billed to your Anthropic API account.
+        {model ? `Model: ${model}. ` : ''}With hints off the sage gives fixed, spoiler-free counsel and sends nothing to the API. At Nudges or Full its answers are generated from your game state and the hint tiers that level allows; it is told not to say more, but that is best effort, not a guarantee. Requests are billed to your Anthropic API account.
       </p>
     </div>
   )

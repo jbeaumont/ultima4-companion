@@ -87,8 +87,17 @@ describe('sage history', () => {
     const f = fake([{ text: 'The mantra is AHM.' }, { text: 'Seek within.' }])
     const c = new SageConversation(f.start)
     await c.ask('1', 'mantra?', 'hawkwind', 'full', null, events().on)
-    await c.ask('2', 'and now?', 'hawkwind', 'off', null, events().on)
+    await c.ask('2', 'and now?', 'hawkwind', 'nudges', null, events().on)
     expect(JSON.stringify(f.requests[1]!.messages)).not.toContain('AHM')
+  })
+
+  it('with hints off, gives fixed counsel and sends nothing to the model', async () => {
+    const f = fake([])
+    const e = events()
+    await new SageConversation(f.start).ask('1', 'where is the rune of honesty?', 'hawkwind', 'off', null, e.on)
+    expect(f.requests.length).toBe(0)
+    expect(e.out.deltas.join('')).toMatch(/raise the hint level/)
+    expect(e.out.done[0]).toMatchObject({ ok: true, servedBy: expect.stringMatching(/fixed/) })
   })
 })
 

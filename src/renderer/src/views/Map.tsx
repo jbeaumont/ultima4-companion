@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { disclosure } from '@domain/spoilers'
 import { LOCATIONS } from '@domain/constants'
 import { cellStyle, isRoomCell, roomIndex } from '@domain/dungeonGlyphs'
 import { FOG_SIZE, exploredPercent, isExplored } from '@domain/fog'
@@ -227,7 +228,7 @@ function DungeonMap(props: {
 }) {
   const { base, id, dungeon, level, onLevel, party, stamp } = props
   const { journal } = useJournal()
-  const spoilers = journal?.spoilerLevel === 'full'
+  const spoilers = disclosure(journal?.spoilerLevel).wholeMap
   const [fog, setFog] = useDungeonFog()
   const [reveal, setReveal] = useState(false)
   const seen = useMemo(() => seenCount(fog, id, level), [fog, id, level])

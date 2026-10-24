@@ -5,6 +5,7 @@ import { elevationSteps } from './elevation'
 import { suggestedTopics } from './hints'
 import type { SpoilerLevel } from './hints'
 import { progress } from './progress'
+import { disclosure } from './spoilers'
 
 export interface NextStep {
   /** Hint topic id, or "elevation-<virtue>". */
@@ -33,6 +34,6 @@ export function nextSteps(p: PartySave, level: SpoilerLevel): NextStep[] {
       ].filter(Boolean).join(' '),
       elevation: true
     })),
-    ...topics.map((t) => ({ id: t.id, title: t.title, ...(level !== 'off' ? { detail: t.tiers[0] } : {}) }))
+    ...topics.map((t) => ({ id: t.id, title: t.title, ...(disclosure(level).suggestionNudges ? { detail: t.tiers[0] } : {}) }))
   ]
 }
