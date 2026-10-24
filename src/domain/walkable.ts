@@ -28,6 +28,7 @@ const COST: Record<number, number> = {
   68: 15, // poison field
   70: 15, // fire field
   71: 15, // sleep field
+  73: 1, // secret door: looks like wall, but walkable (in the game's list, D_0904)
   74: 1 // altar
 }
 

@@ -5,7 +5,7 @@ import { PARTY_SAV_SIZE, parsePartySav } from '../../src/parsers/party'
 import type { PartySave } from '../../src/parsers/party'
 import { parseWorldMap, WORLD_SIZE } from '../../src/parsers/worldMap'
 import { findRoute } from '../../src/domain/pathfind'
-import { stepCost } from '../../src/domain/walkable'
+import { DESTINATION_ONLY, stepCost } from '../../src/domain/walkable'
 import type { Dir, Grid } from '../../src/domain/pathfind'
 import { SPELL_CAST, combatWalkable, planCombatTurn, weaponReach } from '../../src/domain/combatPlan'
 import { BATTLE_DS, parseBattle } from '../../src/parsers/battle'
@@ -28,6 +28,8 @@ import type { Key } from './input'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const DOOR = 59 // unlocked door; 58 is locked and needs a key
+const TOWN_ENERGY_FIELD = 69 // blocks walking; Dispel clears it
+const LOCKED_DOOR = 58 // J with a key turns it into a door
 const STALL_TURNS = 40 // turns without a monster falling before a room battle gives up on the rest
 const DNG_DELTA = [[-1, 0], [0, -1], [1, 0], [0, 1]] as const // dungeon directions W, N, E, S
 
@@ -189,25 +191,53 @@ export class GameDriver {
   }
 
   /** Walk to (tx, ty) on the current map, re-routing around anything that blocks us. */
-  async walkTo(tx: number, ty: number, maxSteps = 400): Promise<PartySave> {
+  async walkTo(tx: number, ty: number, maxSteps = 400, opts: { dispel?: boolean; unlock?: boolean } = {}): Promise<PartySave> {
     const blocked = new Map<string, number>() // cell -> step it was blocked at
     const fails = new Map<string, number>() // consecutive refused steps per cell
     for (let step = 0; step < maxSteps; step++) {
       const s = this.state()
       if (s.x === tx && s.y === ty) return s
       for (const [k, at] of blocked) if (step - at > 8) blocked.delete(k) // people move on
-      let route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { blocked: new Set(blocked.keys()) })
+      // route around everyone standing on the map now (read each step: people move)
+      const people = s.location !== 0 ? this.npcs().map((n) => `${n.x},${n.y}`).filter((k) => k !== `${tx},${ty}`) : []
+      const avoid = new Set([...blocked.keys(), ...people])
+      let route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { blocked: avoid })
       if (!route?.length && blocked.size) {
         // whatever blocked us (a monster, a person) has probably moved: forget it and try again
         blocked.clear()
-        route = findRoute(this.grid(s.location), s.x, s.y, tx, ty)
+        route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { blocked: new Set(people) })
       }
+      if (!route?.length && (opts.dispel || opts.unlock)) {
+        // an energy field or a locked door may be the only way: route through it and deal with it on arrival
+        const cost = (t: number, goal: boolean): number | null =>
+          opts.dispel && t === TOWN_ENERGY_FIELD ? 30 : opts.unlock && t === LOCKED_DOOR ? 20 : DESTINATION_ONLY.has(t) && !goal ? null : stepCost(t)
+        route = findRoute(this.grid(s.location), s.x, s.y, tx, ty, { cost, blocked: avoid }) ?? findRoute(this.grid(s.location), s.x, s.y, tx, ty, { cost })
+      }
+      if (!route?.length) route = findRoute(this.grid(s.location), s.x, s.y, tx, ty) // boxed in by people: push through and let them move
       if (!route?.length) throw new DriverError(`No route from ${s.x},${s.y} to ${tx},${ty} in location ${s.location} (avoiding ${[...blocked.keys()].join(" ") || "nothing"})`)
       const dir: Dir = route[0]!
       const [dx, dy] = dir === 'up' ? [0, -1] : dir === 'down' ? [0, 1] : dir === 'left' ? [-1, 0] : [1, 0]
       const g = this.grid(s.location)
       const nx = g.wrap ? (s.x + dx + g.width) % g.width : s.x + dx
       const ny = g.wrap ? (s.y + dy + g.height) % g.height : s.y + dy
+      if (opts.dispel && g.tileAt(nx, ny) === TOWN_ENERGY_FIELD) {
+        // outside battle Dispel asks for a direction (U4_SPELL.C SPL_Dispel)
+        const caster = s.members.findIndex((m) => m.status === 'G' && m.mp >= 20)
+        if (caster < 0 || !(s.mixtures[3]! > 0)) throw new DriverError('An energy field is in the way and nobody can Dispel it')
+        await this.castSpell('d', { caster, dir })
+        continue
+      }
+      if (opts.unlock && g.tileAt(nx, ny) === LOCKED_DOOR) {
+        // J unlocks with a key, east or west only (U4_EXPLO.C CMD_Jimmy); it becomes a door to open
+        if (dy !== 0) {
+          blocked.set(`${nx},${ny}`, step)
+          continue
+        }
+        if (!s.keys) throw new DriverError('A locked door is in the way and the party has no keys')
+        await this.press('j', 300)
+        await this.press(dir, 300)
+        continue
+      }
       if (s.location !== 0 && g.tileAt(nx, ny) === DOOR) {
         // the game opens doors with O, and only to the east or west (U4_EXPLO.C CMD_Open)
         if (dy !== 0) {
