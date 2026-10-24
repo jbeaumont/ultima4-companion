@@ -44,7 +44,9 @@ describe('sage requests', () => {
   it('cap the answer at a few-sentences budget, not 64k', () => {
     const r = buildRequest('hawkwind', 'nudges', [], [{ role: 'user', content: 'hi' }])
     expect(r.max_tokens).toBe(SAGE_MAX_TOKENS)
-    expect(SAGE_MAX_TOKENS).toBeLessThanOrEqual(8000)
+    // measured max 654 (scripts/sage-budget.ts); keep headroom without a runaway answer
+    expect(SAGE_MAX_TOKENS).toBeGreaterThanOrEqual(1500)
+    expect(SAGE_MAX_TOKENS).toBeLessThanOrEqual(4000)
   })
 
   it('tell the model to trust the current game state over the conversation', () => {

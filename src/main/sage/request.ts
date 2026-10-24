@@ -8,11 +8,13 @@ import type { Persona } from './prompt'
 type Message = Anthropic.Beta.BetaMessageParam
 
 /**
- * Output cap per answer. The sage answers in a few sentences at medium effort;
- * the cap covers the model's thinking plus the answer. An answer that hits it is
- * shown with a note rather than silently cut.
+ * Output cap per answer, covering the model's thinking plus the answer. Measured
+ * with scripts/sage-budget.ts (28 questions, both personas, Nudges and Full, Opus
+ * 5.5 at medium effort): median 399, p90 608, max 654 output tokens, of which the
+ * visible answer was at most about 240. The cap leaves about 3x headroom; an
+ * answer that hits it is shown with a note rather than silently cut.
  */
-export const SAGE_MAX_TOKENS = 8000
+export const SAGE_MAX_TOKENS = 2000
 
 /** Conversation kept per persona and spoiler level, measured in characters of text (about 4 per token). */
 export const SAGE_HISTORY_CHARS = 30_000
