@@ -17,7 +17,7 @@ interface Fixture {
   name: string
   verifiedLive: string
   state: Partial<Omit<PartySave, 'members'>> & { members: Partial<CharacterRecord>[] }
-  knowledge: { spoilerLevel: SpoilerLevel; revealed: Record<string, number>; visited: number[] }
+  knowledge: { spoilerLevel: SpoilerLevel; revealed: Record<string, number>; visited: number[]; met?: string[] }
   /** How the state was observed (e.g. a save-file fallback after the game closed). */
   observation?: Observation
   expect: {
@@ -58,7 +58,8 @@ describe('replay fixtures are clean', () => {
 describe.each(fixtures)('replay %s', (_file, f) => {
   const party = partyFrom(f)
   const p = progress(party)
-  const steps = nextSteps(party, f.knowledge.spoilerLevel)
+  const knowledge = { visited: f.knowledge.visited, met: f.knowledge.met ?? [] }
+  const steps = nextSteps(party, f.knowledge.spoilerLevel, knowledge)
   const ids = steps.map((s) => s.id)
   const e = f.expect
 
@@ -85,8 +86,8 @@ describe.each(fixtures)('replay %s', (_file, f) => {
   }
 
   it.each(levels)('discloses only what spoiler level %s permits', (level) => {
-    const shown = nextSteps(party, level)
-    for (const s of shown.filter((x) => !x.elevation)) {
+    const shown = nextSteps(party, level, knowledge)
+    for (const s of shown.filter((x) => !x.elevation && !x.opening)) {
       const topic = HINTS.find((h) => h.id === s.id)!
       if (level === 'off') expect(s.detail).toBeUndefined()
       else expect(s.detail).toBe(topic.tiers[0])

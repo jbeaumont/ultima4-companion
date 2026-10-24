@@ -2,16 +2,50 @@
   "name": "first rune: outside Moonglow, Rune of Honesty not found",
   "verifiedLive": "scripts/hillclimb/first-rune.ts checkpoint 1-outside, 2026-10-18",
   "state": {
-    "location": 0, "x": 232, "y": 135, "moves": 42,
-    "runes": 0, "stones": 0, "items": 0,
-    "karma": [65, 60, 55, 50, 55, 55, 50, 50],
-    "members": [{ "name": "Avatar", "hp": 200, "hpMax": 200, "xp": 100, "classIndex": 0, "status": "G" }],
+    "location": 0,
+    "x": 232,
+    "y": 135,
+    "moves": 42,
+    "runes": 0,
+    "stones": 0,
+    "items": 0,
+    "karma": [
+      65,
+      60,
+      55,
+      50,
+      55,
+      55,
+      50,
+      50
+    ],
+    "members": [
+      {
+        "name": "Avatar",
+        "hp": 200,
+        "hpMax": 200,
+        "xp": 100,
+        "classIndex": 0,
+        "status": "G"
+      }
+    ],
     "food": 30000
   },
-  "knowledge": { "spoilerLevel": "nudges", "revealed": {}, "visited": [] },
+  "knowledge": {
+    "spoilerLevel": "nudges",
+    "revealed": {},
+    "visited": []
+  },
   "expect": {
-    "nextIncludes": ["rune-honesty"],
-    "checklistNotDone": ["rune-Honesty"],
-    "notSolved": ["rune-honesty"]
+    "nextIncludes": [
+      "rune-honesty",
+      "opening-lord-british"
+    ],
+    "checklistNotDone": [
+      "rune-Honesty"
+    ],
+    "notSolved": [
+      "rune-honesty"
+    ]
   }
 }

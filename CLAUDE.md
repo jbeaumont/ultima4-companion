@@ -40,6 +40,9 @@ Full roadmap: see the "Milestones" section of README.md.
 - Switching (Settings → Playthroughs) writes out the fog, loads the other profile's journal and fog, and reloads the window. Each profile records its Avatar's name; the Dashboard flags a save for a different character.
 - A new playthrough doesn't adopt the character in the save when it is created (`waitingFor`), nor (for older profiles) one another playthrough owns (`adoption()` in `src/shared/profiles.ts`). Until a new game appears (another name, or moves below the noted count) or the player clicks Follow, the Dashboard, Tracker and HUD show a "new playthrough" state, and nothing is recorded in its journal or map. Driving `switchProfile` from CDP skips the window reload the Settings screen does; reload the page yourself.
 
+## Guidance
+- Suggested next (`nextSteps` in `src/domain/guidance.ts`): Elevation-ready virtues, then quest topics for the current place, then up to two opening steps from `src/domain/opening.ts` (Lord British, companions via `joinReadiness`, spells, gear, talking; they need the playthrough's journal and drop away once done), then the other topics. Openers are general advice; companion towns follow `disclosure(level).companionTowns`, and details show only where suggestion nudges do.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI

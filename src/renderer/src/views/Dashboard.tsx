@@ -9,6 +9,7 @@ import type { SpoilerLevel } from '@domain/hints'
 import { shrineAdvice } from '@domain/shrine'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { nextSteps } from '@domain/guidance'
+import type { Knowledge } from '@domain/opening'
 import { disclosure } from '@domain/spoilers'
 import { hawkwindBand } from '@domain/hawkwind'
 import { partyAlerts } from '@domain/partyCondition'
@@ -129,8 +130,8 @@ function Quest({ p }: { p: PartySave }) {
   )
 }
 
-function Next({ p, level, onOpen }: { p: PartySave; level: SpoilerLevel; onOpen: () => void }) {
-  const steps = nextSteps(p, level)
+function Next({ p, level, knowledge, onOpen }: { p: PartySave; level: SpoilerLevel; knowledge?: Knowledge; onOpen: () => void }) {
+  const steps = nextSteps(p, level, knowledge)
   return (
     <section className="panel d-next">
       <h3>Suggested next</h3>
@@ -292,7 +293,7 @@ export function Dashboard({ state, onNavigate }: { state: GameState | null; onNa
       <VirtueCards p={p} art={art} />
       <aside className="d-right">
         <Quest p={p} />
-        <Next p={p} level={journal ? journal.spoilerLevel : 'off'} onOpen={() => onNavigate('Hints')} />
+        <Next p={p} level={journal ? journal.spoilerLevel : 'off'} knowledge={journal ? { visited: journal.visited, met: journal.met } : undefined} onOpen={() => onNavigate('Hints')} />
         <Timers p={p} />
       </aside>
       <Companions p={p} art={art} towns={towns} />
