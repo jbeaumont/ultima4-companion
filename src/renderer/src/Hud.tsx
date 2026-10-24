@@ -8,6 +8,7 @@ import { unsavedChip } from '@domain/unsavedChip'
 import { useGameState } from './useGameState'
 import { useNow } from './useNow'
 import { sourceLabel } from '@shared/observationLabel'
+import { useNewPlaythrough } from './useNewPlaythrough'
 
 const MOON_GLYPHS = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
 
@@ -50,6 +51,7 @@ export function Hud() {
   const saved = !!p && state?.unsavedMoves === 0
   const now = useNow(1000)
   const hudLabel = state ? sourceLabel(state, now) : null
+  const { waiting } = useNewPlaythrough(p)
   return (
     <div className="hud">
       <header className="hud-head">
@@ -62,7 +64,9 @@ export function Hud() {
         {saved && <span className="hud-saved" title="Nothing unsaved">Saved</span>}
         <button className="hud-close" title="Close HUD" onClick={() => void window.u4.toggleHud()}>×</button>
       </header>
-      {p ? (
+      {p && waiting ? (
+        <div className="hud-body muted small">New playthrough: start a new game in Ultima IV (Initiate New Game).</div>
+      ) : p ? (
         <div className="hud-body">
           <div className="hud-party">
             {members.map((m, i) => {
