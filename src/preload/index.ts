@@ -26,6 +26,7 @@ const api = {
   setLiveMemory: (on: boolean): Promise<GameState | null> => ipcRenderer.invoke(IPC.setLiveMemory, on),
   setEditorEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setEditorEnabled, on),
   setSageEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setSageEnabled, on),
+  setWelcomeSeen: (seen: boolean): Promise<void> => ipcRenderer.invoke(IPC.setWelcomeSeen, seen),
   launchGame: (): Promise<{ ok: true; profile: string } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.launchGame),
   getDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogGet),
   resetDungeonFog: (): Promise<Uint8Array> => ipcRenderer.invoke(IPC.dungeonFogReset),

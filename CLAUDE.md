@@ -43,6 +43,9 @@ Full roadmap: see the "Milestones" section of README.md.
 ## Guidance
 - Suggested next (`nextSteps` in `src/domain/guidance.ts`): Elevation-ready virtues, then quest topics for the current place, then up to two opening steps from `src/domain/opening.ts` (Lord British, companions via `joinReadiness`, spells, gear, talking; they need the playthrough's journal and drop away once done), then the other topics. Openers are general advice; companion towns follow `disclosure(level).companionTowns`, and details show only where suggestion nudges do.
 
+## First run
+- `src/renderer/src/components/Welcome.tsx` shows once (`settings.welcomeSeen`; `loadSettings` must list every key it keeps): what the companion does, the save it found (continue, or start a new game in its own playthrough), the spoiler level and a tour. Test instances skip it so scripts can drive the views; Settings → "Show the welcome again" (or the `u4-show-welcome` window event) opens it anywhere.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
