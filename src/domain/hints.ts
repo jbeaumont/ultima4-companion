@@ -59,15 +59,17 @@ const mantra = (virtue: string, word: string, nudge: string, clue: string, sourc
 })
 
 // What stands between the entrance and each altar, from the dungeon files (rooms, their exits
-// and triggers, energy fields; see tests/hints.test.ts). Despise was also played through.
-const DISPEL = 'Energy fields seal the way: bring a Dispel mixture (D: Sulfurous Ash, Garlic, Black Pearl) and cast it facing the field.'
+// and triggers, energy fields; see tests/hints.test.ts), and confirmed by playing each one
+// (scripts/hillclimb/stone.ts <dungeon>).
+const DISPEL = 'Energy fields seal the way: bring Dispel mixtures (D: Sulfurous Ash, Garlic, Black Pearl) and cast one facing the field.'
 const SWITCH = 'The way runs through a room with a hidden switch: after the fight, step on the odd floor tile to open a path.'
+const ROOM_DISPEL = 'cast Dispel in the fight, aimed at the field'
 const ALTAR_WAY: Record<string, string> = {
-  Deceit: DISPEL,
+  Deceit: `${DISPEL} The way down doubles back: from level 6 climb to level 5 by another ladder, then go down again.`,
   Despise: `${DISPEL} The altar lies north of a room: in that room step on the plate in the east, then on the one that appears in the south-west, to raise a bridge north over the water, and leave the room northward onto the altar.`,
-  Wrong: DISPEL,
-  Covetous: SWITCH,
-  Shame: SWITCH,
+  Wrong: `${DISPEL} On level 8 the rooms before the altar hold energy fields too: ${ROOM_DISPEL}.`,
+  Covetous: `The way runs through rooms with hidden switches. On level 4, in the room just east of the ladder down, step on the plate, ${ROOM_DISPEL} it raises, then step on the second plate to open the room's west side.`,
+  Shame: `${SWITCH} Its altar is reached from below: take the ladders down to level 7, then climb back up by other ladders.`,
   Destard: 'Expect to fight through several rooms on the way down.'
 }
 

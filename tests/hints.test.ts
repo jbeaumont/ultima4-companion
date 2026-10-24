@@ -128,7 +128,9 @@ describe.skipIf(!hasGame)('stone hints say what the way to the altar needs (real
       const trig = d.rooms.map((r) => roomExits(r, combatWalkable))
       const needsDispel = !dungeonPath(L, start, altar, false, (r) => trig[r]!)
       const needsSwitch = !needsDispel && !dungeonPath(L, start, altar, false, (r) => plain[r]!)
-      expect(/Dispel/.test(h.tiers[2]), `${h.title}: Dispel`).toBe(needsDispel)
+      // Dispel is named when energy fields seal the dungeon; otherwise only for fields inside a room's fight
+      if (needsDispel) expect(h.tiers[2], `${h.title}: Dispel`).toMatch(/Dispel/)
+      else if (/Dispel/.test(h.tiers[2])) expect(h.tiers[2], `${h.title}: Dispel only in a fight`).toMatch(/in the fight/)
       if (needsSwitch) expect(h.tiers[2], `${h.title}: switch`).toMatch(/switch/)
     }
   })
