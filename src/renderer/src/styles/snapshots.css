@@ -10,3 +10,4 @@
 .reason { font-size: 11px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--muted); color: var(--muted); }
 .reason.r-manual { border-color: var(--accent); color: var(--accent); }
 .reason.r-pre-restore, .reason.r-pre-edit { border-color: #e0a050; color: #e0a050; }
+.snap-other { font-size: 11px; padding: 0 8px; border-radius: 10px; border: 1px solid #e0a050; color: #e0a050; }

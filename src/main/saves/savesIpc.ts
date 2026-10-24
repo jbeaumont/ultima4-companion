@@ -15,8 +15,8 @@ import { loadSettings, saveSettings } from '../store'
 import { WriteRefused, writeSaveFiles } from './safeWrite'
 import { existsSync } from 'node:fs'
 import type { SaveLocation } from '../saveLocation'
-import { SnapshotStore, effectiveSavePaths } from './snapshots'
-import type { SnapshotMeta } from './snapshots'
+import { SnapshotStore, effectiveSavePaths, restoreWarning } from './snapshots'
+import type { SnapshotMeta, SnapshotPlaythrough } from './snapshots'
 
 export type SavesResult<T = unknown> = { ok: true; value: T } | { ok: false; message: string; cancelled?: true }
 
@@ -50,6 +50,8 @@ export interface SavesContext {
   loc: SaveLocation | null
   /** Real and test saves keep separate snapshot stores. */
   store: SnapshotStore
+  /** The active playthrough, to warn before restoring another one's save. */
+  playthrough: () => SnapshotPlaythrough
   testRoot: string
 }
 
@@ -91,8 +93,10 @@ export function setupSavesIpc(ctx: () => SavesContext, send: (channel: string, p
       if (await isGameRunning()) throw new WriteRefused('Close DOSBox first: the game must not be running while its save is changed.')
       const { meta, files } = await ctx().store.read(id)
       const s = meta.summary
-      const detail = `${new Date(meta.createdAt).toLocaleString()}${s ? `\n${s.names.join(', ')} · ${s.location} (${s.x},${s.y}) · ${s.moves} moves · ${s.avatarCount}/8 Avatarhoods` : ''}\n\nYour current save is backed up first, so this can be undone.`
-      if (!(await confirm(e, 'Restore this snapshot over your current save?', detail, 'Restore'))) return CANCELLED
+      const warning = restoreWarning(meta, ctx().playthrough())
+      const detail = `${new Date(meta.createdAt).toLocaleString()}${s ? `\n${s.names.join(', ')} · ${s.location} (${s.x},${s.y}) · ${s.moves} moves · ${s.avatarCount}/8 Avatarhoods` : ''}${warning ? `\n\n${warning}` : ''}\n\nYour current save is backed up first, so this can be undone.`
+      const message = warning ? 'Restore another playthrough\'s save over your current one?' : 'Restore this snapshot over your current save?'
+      if (!(await confirm(e, message, detail, 'Restore'))) return CANCELLED
       const { backup } = await writeSaveFiles(ctx().loc, files, 'pre-restore', deps())
       await changed()
       return { ok: true, value: backup }

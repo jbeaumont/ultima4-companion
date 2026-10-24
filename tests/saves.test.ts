@@ -6,7 +6,7 @@ import { PARTY_SAV_SIZE, parsePartySav } from '@parsers/party'
 import { encodePartySav } from '@parsers/partyWriter'
 import { describeChanges } from '@shared/saveDiff'
 import { WriteRefused, writeSaveFiles } from '../src/main/saves/safeWrite'
-import { SnapshotStore, effectiveSavePaths, toPrune } from '../src/main/saves/snapshots'
+import { SnapshotStore, effectiveSavePaths, restoreWarning, toPrune } from '../src/main/saves/snapshots'
 import type { SnapshotMeta } from '../src/main/saves/snapshots'
 
 function party(gold: number, name = 'Danny'): Uint8Array {
@@ -76,6 +76,38 @@ describe('SnapshotStore', () => {
     const m = (id: string, reason: SnapshotMeta['reason'], t: number): SnapshotMeta => ({ id, reason, createdAt: t, hash: id, files: [], summary: null })
     const metas = [m('a1', 'auto', 1), m('a2', 'auto', 2), m('a3', 'auto', 3), m('man', 'manual', 0)]
     expect(toPrune(metas, 2)).toEqual(['a1'])
+  })
+
+  it('records the active playthrough and prunes each playthrough separately', async () => {
+    let active = { id: 'first', name: 'First', avatar: 'Danny' }
+    const tagged = new SnapshotStore(join(tmp, 'tagged'), () => active)
+    expect((await tagged.take(game, 'manual'))!.playthrough).toEqual(active)
+    active = { id: 'second', name: 'Second', avatar: 'Ann' }
+    expect((await tagged.take(game, 'manual', undefined, new Date(Date.now() + 5)))!.playthrough?.id).toBe('second')
+
+    const m = (id: string, p: string, t: number): SnapshotMeta => ({ id, reason: 'auto', createdAt: t, hash: id, files: [], summary: null, playthrough: { id: p, name: p } })
+    // the busy playthrough b prunes its own oldest, never a's
+    expect(toPrune([m('a1', 'a', 1), m('b1', 'b', 2), m('b2', 'b', 3), m('b3', 'b', 4)], 2)).toEqual(['b1'])
+  })
+})
+
+describe('restoreWarning', () => {
+  const meta = (playthrough?: SnapshotMeta['playthrough'], avatar = 'Danny'): SnapshotMeta => ({
+    id: 'x', reason: 'manual', createdAt: 0, hash: '', files: [],
+    summary: { names: [avatar], moves: 0, location: 'Britannia', x: 0, y: 0, avatarCount: 0 },
+    ...(playthrough ? { playthrough } : {})
+  })
+  const me = { id: 'main', name: 'Main', avatar: 'Danny' }
+
+  it('is quiet for this playthrough and for older untagged snapshots of the same Avatar', () => {
+    expect(restoreWarning(meta({ id: 'main', name: 'Main' }), me)).toBeNull()
+    expect(restoreWarning(meta(), me)).toBeNull()
+    expect(restoreWarning(meta(), { id: 'main', name: 'Main' })).toBeNull()
+  })
+
+  it("warns for another playthrough's snapshot or another Avatar", () => {
+    expect(restoreWarning(meta({ id: 'alt', name: 'Alt run' }), me)).toMatch(/"Alt run" \(Avatar Danny\)/)
+    expect(restoreWarning(meta(undefined, 'Ann'), me)).toMatch(/another character \(Avatar Ann\)/)
   })
 })
 

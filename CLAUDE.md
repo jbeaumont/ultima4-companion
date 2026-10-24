@@ -33,7 +33,8 @@ Full roadmap: see the "Milestones" section of README.md.
 - Explicit reveals are capped by the level; discovered knowledge (solved topics, visited towns, seen cells) shows at any level that shows hints.
 
 ## Playthroughs
-- The journal and explored-map files belong to the active playthrough profile: `<userData>/profiles/<id>/` (`src/main/profiles.ts`, `profileSession.ts`); `profiles.json` lists them. The first run moved the old files there and kept `*.pre-profiles` copies. Settings, snapshots and the Sage key stay global.
+- The journal and explored-map files belong to the active playthrough profile: `<userData>/profiles/<id>/` (`src/main/profiles.ts`, `profileSession.ts`); `profiles.json` lists them. The first run moved the old files there and kept `*.pre-profiles` copies. Settings and the Sage key stay global.
+- Snapshots stay in one store, because the game has one save slot and restoring another playthrough's snapshot is how you swap characters. Each records the active playthrough (`playthrough` in its meta); the Snapshots view shows this playthrough's by default, auto snapshots are pruned per playthrough, and restoring another playthrough's (or another Avatar's) save gets a warning in the confirmation (`restoreWarning`).
 - Switching (Settings → Playthroughs) writes out the fog, loads the other profile's journal and fog, and reloads the window. Each profile records its Avatar's name; the Dashboard flags a save for a different character.
 
 ## Rules
