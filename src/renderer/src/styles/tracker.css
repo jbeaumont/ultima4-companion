@@ -1,0 +1,3 @@
+/* Styles used only by the tracker view. */
+.stat-row.with-rune { grid-template-columns: 90px 70px 1fr 70px; }
+.rune.yes { color: #5fbf7a; } .rune.no { color: var(--muted); }

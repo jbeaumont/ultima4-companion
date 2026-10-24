@@ -1,0 +1,12 @@
+/* Styles used only by the snapshots view. */
+.snap-take { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.snap-bar { display: flex; gap: 16px; align-items: center; margin: 16px 0 8px; }
+.snaps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.snap { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; background: var(--panel); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.snap-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.snap-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.snap-label { color: var(--accent); }
+.snap-actions { display: flex; gap: 6px; flex: none; }
+.reason { font-size: 11px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--muted); color: var(--muted); }
+.reason.r-manual { border-color: var(--accent); color: var(--accent); }
+.reason.r-pre-restore, .reason.r-pre-edit { border-color: #e0a050; color: #e0a050; }
