@@ -1,6 +1,6 @@
 // Prompts for the AI sage. Pure (no Electron/SDK) so they can be tested.
 // The system prompt is stable per persona + spoiler level (cached); the live game
-// state goes in a per-turn system message so the cached prefix survives.
+// state goes in each turn (after the cached prefix) so the prefix survives.
 import type { PartySave } from '@parsers/party'
 import { ARMOR, CLASSES, ITEM_FLAGS, LOCATIONS, REAGENTS, RUNES, SPELLS, STONES, VIRTUES, WEAPONS, describeTransport } from '@domain/constants'
 import type { ItemName } from '@domain/constants'
@@ -10,7 +10,8 @@ import type { SpoilerLevel } from '@domain/hints'
 import { PHASE_NAMES, gateState } from '@domain/moongates'
 import { progress } from '@domain/progress'
 
-export const SAGE_MODEL = 'claude-opus-5-5'
+/** The default model: the lowest-cost one (Claude Haiku 5.5); see SAGE_MODELS in request.ts for the others. */
+export const SAGE_MODEL = 'claude-haiku-5-5'
 
 export type Persona = 'hawkwind' | 'lordbritish'
 
@@ -63,7 +64,7 @@ export function buildSystemPrompt(persona: Persona, level: SpoilerLevel): string
 
 const named = <T extends readonly string[]>(list: T, bits: number) => list.filter((_, i) => (bits & (1 << i)) !== 0)
 
-/** Compact, factual description of the game state for the per-turn system message. */
+/** Compact, factual description of the game state sent with each question. */
 export function buildStateMessage(p: PartySave | null, source: 'saveFile' | 'memory' | null, level: SpoilerLevel): string {
   if (!p) return 'Game state: unavailable (no save found yet). Answer in general terms.'
   const prog = progress(p)

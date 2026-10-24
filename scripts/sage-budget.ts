@@ -3,7 +3,7 @@
 // app's own conversation code (same request, history and truncation), and records
 // output tokens, the share that was thinking, and cost. Without --yes it only
 // prints the plan and an estimate: nothing is sent and nothing is spent.
-//   npx tsx scripts/sage-budget.ts [outDir] [--yes] [--personas hawkwind,lordbritish] [--levels nudges,full]
+//   npx tsx scripts/sage-budget.ts [outDir] [--yes] [--model claude-haiku-5-5|claude-opus-5-5] [--personas hawkwind,lordbritish] [--levels nudges,full]
 // Needs ANTHROPIC_API_KEY (or an `ant auth login` profile). The game state comes
 // from the install's save, read only.
 import Anthropic from '@anthropic-ai/sdk'
@@ -14,9 +14,9 @@ import type { SpoilerLevel } from '../src/domain/hints'
 import type { GameState } from '../src/shared/types'
 import { SageConversation } from '../src/main/sage/conversation'
 import type { SageStream } from '../src/main/sage/conversation'
-import { buildRequest } from '../src/main/sage/request'
-import { SAGE_MAX_TOKENS } from '../src/main/sage/request'
-import { buildStateMessage, buildSystemPrompt } from '../src/main/sage/prompt'
+import { SAGE_MAX_TOKENS, SAGE_MODELS } from '../src/main/sage/request'
+import type { SageModel } from '../src/main/sage/request'
+import { SAGE_MODEL, buildStateMessage, buildSystemPrompt } from '../src/main/sage/prompt'
 import type { Persona } from '../src/main/sage/prompt'
 
 const args = process.argv.slice(2)
@@ -28,6 +28,7 @@ const OUT = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith(
 const SPEND = args.includes('--yes')
 const PERSONAS = (flag('--personas') ?? 'hawkwind,lordbritish').split(',') as Persona[]
 const LEVELS = (flag('--levels') ?? 'nudges,full').split(',') as SpoilerLevel[]
+const MODEL = (flag('--model') ?? SAGE_MODEL) as SageModel
 const GAME = process.env['U4_DIR'] ?? 'C:\\Program Files\\GOG Galaxy\\Games\\Ultima 4'
 
 // one conversation per persona and level, asked in order (the follow-ups lean on history)
@@ -41,8 +42,12 @@ const QUESTIONS = [
   'Tell me more about that last part.'
 ]
 
-// Claude Opus 5.5, USD per million tokens (cache writes at 1.25x input for the 5-minute TTL)
-const PRICE = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 }
+// USD per million tokens (cache writes at 1.25x input for the 5-minute TTL; Haiku at prompts of 100k tokens or fewer)
+const PRICES: Record<SageModel, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+  'claude-haiku-5-5': { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
+  'claude-opus-5-5': { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 }
+}
+const PRICE = PRICES[MODEL] ?? PRICES['claude-opus-5-5']
 
 interface Row {
   persona: Persona
@@ -90,6 +95,8 @@ function plan(state: GameState | null): void {
 }
 
 async function main(): Promise<void> {
+  if (!(MODEL in SAGE_MODELS)) throw new Error(`unknown model ${MODEL}; one of ${Object.keys(SAGE_MODELS).join(', ')}`)
+  console.log(`model: ${MODEL}`)
   const state = gameState()
   console.log(`game state: ${state ? 'from the install save' : 'none (general answers)'}`)
   plan(state)
@@ -116,7 +123,7 @@ async function main(): Promise<void> {
           }
         }
         return wrapped
-      })
+      }, MODEL)
       for (const question of QUESTIONS) {
         let answer = ''
         let stopReason: string | null = null
@@ -150,7 +157,7 @@ async function main(): Promise<void> {
   const outs = rows.map((r) => r.outputTokens).sort((a, b) => a - b)
   const pct = (p: number) => outs[Math.min(outs.length - 1, Math.floor((p / 100) * outs.length))]!
   const summary = {
-    model: buildRequest('hawkwind', 'nudges', [], []).model,
+    model: MODEL,
     cap: SAGE_MAX_TOKENS,
     requests: rows.length,
     hitCap: rows.filter((r) => r.stopReason === 'max_tokens').length,

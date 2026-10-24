@@ -19,17 +19,40 @@ export const SAGE_MAX_TOKENS = 2000
 /** Conversation kept per persona and spoiler level, measured in characters of text (about 4 per token). */
 export const SAGE_HISTORY_CHARS = 30_000
 
-const BETAS = ['server-side-fallback-2026-07-01', 'mid-conversation-system-clear-at-2026-08-21']
+/**
+ * What each supported model takes. Haiku 5.5 (the default, lowest cost) has no
+ * server-side fallback (a `fallbacks` field is a 400) and no mid-conversation
+ * system messages, so the game state rides in the user message instead.
+ */
+export const SAGE_MODELS = {
+  'claude-haiku-5-5': { fallbacks: false, systemMessages: false },
+  'claude-opus-5-5': { fallbacks: true, systemMessages: true }
+} as const
+export type SageModel = keyof typeof SAGE_MODELS
 
 /** Exactly what the SDK's beta stream helper takes. */
 export type SageRequest = Parameters<Anthropic['beta']['messages']['stream']>[0]
 
-export function buildRequest(persona: Persona, level: SpoilerLevel, history: Message[], turn: Message[]): SageRequest {
+/**
+ * One question and the game state at that moment. Where the model allows it the
+ * state is a turn-scoped system message (shown for this turn only); otherwise a
+ * second text block of the question. Either way it stays in history unchanged
+ * (append-only, so the cache and earlier thinking stay valid).
+ */
+export function buildTurn(question: string, state: string, model: SageModel = SAGE_MODEL): Message[] {
+  return SAGE_MODELS[model].systemMessages
+    ? [{ role: 'user', content: question }, { role: 'system', content: state, clear_at: 'next_user_message' }]
+    : [{ role: 'user', content: [{ type: 'text', text: question }, { type: 'text', text: state }] }]
+}
+
+export function buildRequest(persona: Persona, level: SpoilerLevel, history: Message[], turn: Message[], model: SageModel = SAGE_MODEL): SageRequest {
+  const m = SAGE_MODELS[model]
+  const betas = [...(m.fallbacks ? ['server-side-fallback-2026-07-01'] : []), ...(m.systemMessages ? ['mid-conversation-system-clear-at-2026-08-21'] : [])]
   return {
-    model: SAGE_MODEL,
+    model,
     max_tokens: SAGE_MAX_TOKENS,
-    betas: BETAS,
-    fallbacks: 'default',
+    ...(betas.length ? { betas } : {}),
+    ...(m.fallbacks ? { fallbacks: 'default' as const } : {}),
     output_config: { effort: 'medium' },
     system: [{ type: 'text', text: buildSystemPrompt(persona, level), cache_control: { type: 'ephemeral' } }],
     messages: [...history, ...turn]
