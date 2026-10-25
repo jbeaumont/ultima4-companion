@@ -50,6 +50,9 @@ Full roadmap: see the "Milestones" section of README.md.
 - Presets in `src/shared/speed.ts` (Original 500 = GOG's, Faster 3000 = default, Fast 10000). The play profile starts at the saved preset with `cycleup/cycledown=500`; the test profile stays at max. Measured (`scripts/hillclimb/speed.ts`): idle turns are real-time (one per 30 s at any speed); moons change 8/11/19/117 times per 30 s at 500/3000/10000/max.
 - Live change (sidebar Game speed): `src/main/dosboxSpeed.ts` reads the speed from DOSBox's title and presses Ctrl+F11/F12 with real keystrokes (the play video driver ignores posted messages), only after confirming DOSBox is the foreground window. Compare koffi window handles with `koffi.address`, never `===`. `npx tsx scripts/hillclimb/speed-live.ts [--companion]` checks it against the play video driver.
 
+## Spellbook
+- `src/domain/spells.ts`: costs (U4_SPELL.C `D_208C`), recipes (U4_MIX.C `D_277E`, bit `0x80 >> i` for `REAGENTS[i]`) and where each spell works (each `SPL_` handler's checks), tied to the game by `tests/spells.test.ts`. The game checks only which reagents went in, so one of each is enough. The manual (`manual.pdf` in the install) withholds Gate, Resurrect and Undead: those recipes show at Full or once mixed (Gate: Mentorian in Cove; Resurrect: Nigel in the Lycaeum; Undead: a puzzle).
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI
