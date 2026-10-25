@@ -60,6 +60,9 @@ Full roadmap: see the "Milestones" section of README.md.
 - `src/main/fortune.ts` watches while DOSBox's title says `Program: TITLE`: finds TITLE's data segment by its karma block, reads the cards (DS:0x7864 card A, 0x7862 card B, validated against the knockout array at 0x785A), and with "Answer for me" presses Space then A/B (real keystrokes, DOSBox confirmed in front; retried if the game's keyboard flush swallowed them). `FortunePanel` shows over any view while it runs.
 - `npx tsx scripts/hillclimb/fortune.ts <outDir> [class...]` creates each class through the companion and checks PARTY.SAV (all 8 pass).
 
+## Controls view
+- `src/shared/controls.ts`: the game's A-Z commands with where each works (from the dispatch in U4_MAIN.C, U4_DNG.C and U4_COMBA.C; `tests/controls.test.ts` ties the dungeon and combat sets to them), moving, talking, the title screen, DOSBox 0.74's hotkeys (GOG ships no remapping) and the companion's Electron menu keys.
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI

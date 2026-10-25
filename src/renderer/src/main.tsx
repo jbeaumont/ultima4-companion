@@ -5,6 +5,7 @@ import { Hud } from './Hud'
 // shared styles first; each area has its own file (see styles/base.css)
 import './styles/base.css'
 import './styles/battle.css'
+import './styles/controls.css'
 import './styles/dashboard.css'
 import './styles/dialogue.css'
 import './styles/editor.css'
