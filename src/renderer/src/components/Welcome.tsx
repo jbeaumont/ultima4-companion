@@ -13,6 +13,7 @@ const TOUR: [string, string][] = [
   ['Map', 'Britannia, towns and dungeons, with the party marker and the places you have explored.'],
   ['Journal', 'An automatic quest checklist plus your own notes.'],
   ['Hints', 'Hints for every quest step, revealed one tier at a time within your spoiler level.'],
+  ['Spellbook', 'Every spell: what it does, its reagents and MP, and what you can mix and cast now.'],
   ['Dialogue', 'What the people you have met said, searchable by keyword.'],
   ['Snapshots', 'Backups of your single save slot, taken every time it changes.'],
   ['Editor', 'Change your save (off by default; DOSBox must be closed).']
