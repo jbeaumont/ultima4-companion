@@ -5,6 +5,7 @@ import { elevationSteps } from './elevation'
 import { suggestedTopics } from './hints'
 import type { SpoilerLevel } from './hints'
 import { openingSteps } from './opening'
+import { readinessSteps } from './readiness'
 import type { Knowledge } from './opening'
 import { progress } from './progress'
 import { disclosure } from './spoilers'
@@ -16,7 +17,7 @@ export interface NextStep {
   /** Shown under the title; hint text only when the spoiler level allows nudges. */
   detail?: string
   elevation?: boolean
-  /** An opening step (#71): general play advice, not a hint topic. */
+  /** An opening step (#71) or readiness step (#72): play advice, not a hint topic. */
   opening?: boolean
 }
 
@@ -38,6 +39,9 @@ export function nextSteps(p: PartySave, level: SpoilerLevel, knowledge?: Knowled
   const rest = all.filter((t) => !here.includes(t))
   if (openers.length) rest.sort((a, b) => Number(a.id === 'avatarhood') - Number(b.id === 'avatarhood'))
   const topic = (t: (typeof all)[number]): NextStep => ({ id: t.id, title: t.title, ...(nudges ? { detail: t.tiers[0] } : {}) })
+  // one preparation step for what comes next (recommended level, supplies, a ship)
+  const ready2 = readinessSteps(p, level, [...here, ...rest])
+  const advice = [...openers, ...ready2]
   const steps: NextStep[] = [
     ...ready.map((e) => ({
       id: `elevation-${e.virtue.toLowerCase()}`,
@@ -50,8 +54,8 @@ export function nextSteps(p: PartySave, level: SpoilerLevel, knowledge?: Knowled
       elevation: true
     })),
     ...here.map(topic),
-    ...openers.map((o) => ({ id: o.id, title: o.title, ...(nudges ? { detail: o.detail } : {}), opening: true })),
+    ...advice.map((o) => ({ id: o.id, title: o.title, ...(nudges ? { detail: o.detail } : {}), opening: true })),
     ...rest.map(topic)
   ]
-  return steps.slice(0, Math.max(1, openers.length ? 4 : 3))
+  return steps.slice(0, Math.max(1, advice.length ? 4 : 3))
 }
