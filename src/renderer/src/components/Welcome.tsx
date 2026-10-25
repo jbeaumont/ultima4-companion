@@ -16,7 +16,8 @@ const TOUR: [string, string][] = [
   ['Spellbook', 'Every spell: what it does, its reagents and MP, and what you can mix and cast now.'],
   ['Dialogue', 'What the people you have met said, searchable by keyword.'],
   ['Snapshots', 'Backups of your single save slot, taken every time it changes.'],
-  ['Editor', 'Change your save (off by default; DOSBox must be closed).']
+  ['Editor', 'Change your save (off by default; DOSBox must be closed).'],
+  ['Controls', 'Every key: the game’s commands, talking, DOSBox and the companion.']
 ]
 
 export function Welcome({ state, info, onClose }: { state: GameState | null; info: SettingsInfo | null; onClose: () => void }) {

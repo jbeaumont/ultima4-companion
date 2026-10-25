@@ -15,9 +15,10 @@ import { Sage } from './views/Sage'
 import { Settings } from './views/Settings'
 import { Snapshots } from './views/Snapshots'
 import { Spellbook } from './views/Spellbook'
+import { Controls } from './views/Controls'
 import { Tracker } from './views/Tracker'
 
-const VIEWS = ['Dashboard', 'Tracker', 'Map', 'Journal', 'Hints', 'Spellbook', 'Sage', 'Dialogue', 'Snapshots', 'Editor', 'Settings'] as const
+const VIEWS = ['Dashboard', 'Tracker', 'Map', 'Journal', 'Hints', 'Spellbook', 'Sage', 'Dialogue', 'Snapshots', 'Editor', 'Controls', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
@@ -106,6 +107,8 @@ export function App() {
           <JournalView state={state} />
         ) : view === 'Hints' ? (
           <Hints state={state} />
+        ) : view === 'Controls' ? (
+          <Controls />
         ) : view === 'Spellbook' ? (
           <Spellbook state={state} />
         ) : view === 'Sage' ? null : view === 'Dialogue' ? (
