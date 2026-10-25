@@ -9,7 +9,7 @@ Several people, and their AI agents, work on this at once. These rules keep us o
    `npm run dev` keeps its companion data in `%APPDATA%\ultima4-companion-dev`, apart from an installed copy (`ultima4-companion`) and test instances (`ultima4-companion-test`). It still reads your real game saves.
 
 ## Ground rules
-- **Never commit game files.** `.gitignore` blocks the raw formats (`*.SAV`, `*.MAP`, `*.ULT`, `*.TLK`, `*.DNG`, `*.EGA`, ...). Small derived data in `data/` is fine. Keep the repo private.
+- **Never commit game files.** `.gitignore` blocks the raw formats (`*.SAV`, `*.MAP`, `*.ULT`, `*.TLK`, `*.DNG`, `*.EGA`, ...). Small derived data in `data/` is fine.
 - **The game folder is read-only.** The companion only writes saves through its guarded path (DOSBox closed, snapshot first, explicit confirmation).
 - **Play-test in a test instance** (`npm run dev:test`, or the driver scripts), never in your real game. Never close or kill a DOSBox someone launched to play.
 - Screenshots and captures go in a scratch folder, not the repo.
