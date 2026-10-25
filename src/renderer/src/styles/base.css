@@ -100,3 +100,9 @@ a.btn { text-decoration: none; display: inline-block; }
 .speed-label { margin-bottom: 4px; }
 .speed-btns { display: flex; gap: 4px; }
 .speed-btns .btn { flex: 1; padding-left: 4px; padding-right: 4px; }
+
+.fortune { border-color: var(--accent); }
+.fortune h3 { margin-top: 0; }
+.fortune-classes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.fortune-cards { font-size: 16px; margin: 8px 0; }
+.fortune-auto { display: block; margin-top: 6px; }

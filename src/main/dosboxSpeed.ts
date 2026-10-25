@@ -130,3 +130,35 @@ export async function setRunningCycles(pid: number, target: number): Promise<num
   }
   return now as number
 }
+
+/** Visible DOSBox windows with their process and title ("... Program:   TITLE"). */
+export function dosboxWindows(): { pid: number; title: string }[] {
+  const a = load()
+  const out: { pid: number; title: string }[] = []
+  let h: unknown = null
+  for (let i = 0; i < 64; i++) {
+    h = a.FindWindowExW(null, h, 'SDL_app', null)
+    if (!h) break
+    if (!a.IsWindowVisible(h)) continue
+    const owner: [number] = [0]
+    a.GetWindowThreadProcessId(h, owner)
+    out.push({ pid: owner[0], title: title(h) })
+  }
+  return out
+}
+
+/**
+ * Press keys in the game (virtual-key codes, e.g. 0x41 for A), each only while
+ * DOSBox is confirmed as the foreground window; throws without pressing anything
+ * otherwise.
+ */
+export async function pressKeys(pid: number, vks: number[], gapMs = 250): Promise<void> {
+  const a = load()
+  for (const vk of vks) {
+    const h = findWindow(pid)
+    if (!h || !(await bringToFront(h))) throw new SpeedRefused('DOSBox did not come to the front, so no key was pressed.')
+    a.keybd_event(vk, 0, 0, 0)
+    a.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+    await sleep(gapMs)
+  }
+}

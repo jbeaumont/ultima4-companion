@@ -27,3 +27,6 @@ export function speedOf(cycles: number | 'max' | null): Speed | null {
   if (cycles === null || cycles === 'max') return null
   return (Object.keys(SPEEDS) as Speed[]).find((s) => SPEEDS[s] === cycles) ?? null
 }
+
+/** The DOS program DOSBox's title names ("Program:   TITLE" -> "TITLE"), or null. */
+export const programFromTitle = (title: string): string | null => /Program:\s*(\S+)/i.exec(title)?.[1]?.toUpperCase() ?? null
