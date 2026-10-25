@@ -54,6 +54,11 @@ Full roadmap: see the "Milestones" section of README.md.
 - `src/domain/spells.ts`: costs (U4_SPELL.C `D_208C`), recipes (U4_MIX.C `D_277E`, bit `0x80 >> i` for `REAGENTS[i]`) and where each spell works (each `SPL_` handler's checks), tied to the game by `tests/spells.test.ts`. The game checks only which reagents went in, so one of each is enough. The manual (`manual.pdf` in the install) withholds Gate, Resurrect and Undead: those recipes show at Full or once mixed (Gate: Mentorian in Cove; Resurrect: Nigel in the Lycaeum; Undead: a puzzle).
 - `npx tsx scripts/hillclimb/spellbook.ts <outDir>` checks it in the game: Gate and Undead mix from the data, a wrong recipe fizzles and still uses the reagents, Light outdoors fails without spending MP, and the companion shows the withheld recipes once mixed.
 
+## Fortune teller (character creation)
+- Rules in `src/shared/fortune.ts` (TITLE_1.C): a knockout of the eight virtues over 7 questions, card A always the earlier virtue, +5 karma per win; the final winner sets the class. Picking the target's card whenever shown always wins.
+- `src/main/fortune.ts` watches while DOSBox's title says `Program: TITLE`: finds TITLE's data segment by its karma block, reads the cards (DS:0x7864 card A, 0x7862 card B, validated against the knockout array at 0x785A), and with "Answer for me" presses Space then A/B (real keystrokes, DOSBox confirmed in front; retried if the game's keyboard flush swallowed them). `FortunePanel` shows over any view while it runs.
+- `npx tsx scripts/hillclimb/fortune.ts <outDir> [class...]` creates each class through the companion and checks PARTY.SAV (all 8 pass).
+
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation
 - Parsers get a test; prefer checking against the real install plus a synthetic fixture for CI

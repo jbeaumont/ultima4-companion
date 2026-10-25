@@ -10,6 +10,7 @@ import { IPC } from '@shared/types'
 import type { Journal } from '@shared/journal'
 import type { BaseAssets, GameState, LocationAssets, SettingsInfo } from '@shared/types'
 import type { Speed } from '@shared/speed'
+import type { FortuneUpdate } from '../main/fortune'
 
 export type SageDone = { id: string } & ({ ok: true; stopReason: string | null; servedBy: string } | { ok: false; message: string })
 
@@ -29,6 +30,15 @@ const api = {
   setSageEnabled: (on: boolean): Promise<boolean> => ipcRenderer.invoke(IPC.setSageEnabled, on),
   setWelcomeSeen: (seen: boolean): Promise<void> => ipcRenderer.invoke(IPC.setWelcomeSeen, seen),
   /** Game speed preset, and the running game's speed read from its window title. */
+  /** The fortune teller at character creation: live cards while TITLE runs, and the class answered for. */
+  getFortune: (): Promise<FortuneUpdate> => ipcRenderer.invoke(IPC.fortuneGet),
+  /** Answer each question for this class (a virtue index), or stop with null. Presses keys in the game. */
+  setFortuneAuto: (target: number | null): Promise<FortuneUpdate> => ipcRenderer.invoke(IPC.fortuneAuto, target),
+  onFortune: (cb: (u: FortuneUpdate) => void): (() => void) => {
+    const h = (_e: unknown, u: FortuneUpdate) => cb(u)
+    ipcRenderer.on(IPC.fortuneChanged, h)
+    return () => ipcRenderer.removeListener(IPC.fortuneChanged, h)
+  },
   getGameSpeed: (): Promise<{ speed: Speed; running: number | 'max' | null }> => ipcRenderer.invoke(IPC.gameSpeedGet),
   /** Save the preset and change the running game's speed with DOSBox's Ctrl+F11/F12 (DOSBox comes to the front). */
   setGameSpeed: (speed: Speed): Promise<{ ok: true; running: number | 'max' | null } | { ok: false; message: string }> => ipcRenderer.invoke(IPC.gameSpeedSet, speed),

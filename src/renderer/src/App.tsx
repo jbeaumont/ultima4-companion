@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BattlePanel } from './components/BattlePanel'
 import { Welcome } from './components/Welcome'
 import { GameSpeed } from './components/GameSpeed'
+import { FortunePanel } from './components/FortunePanel'
 import type { SettingsInfo } from '@shared/types'
 import { useGameState } from './useGameState'
 import { Dashboard } from './views/Dashboard'
@@ -85,6 +86,7 @@ export function App() {
         <button className="hud-btn pop-btn" onClick={() => void window.u4.toggleHud()}>Pop-out HUD</button>
       </nav>
       <main className="content">
+        <FortunePanel />
         {/* stays mounted so the transcript survives view switches (main keeps the conversation) */}
         {sageOn && (
           <div style={{ display: view === 'Sage' ? undefined : 'none' }}>

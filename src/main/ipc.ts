@@ -25,6 +25,8 @@ import { DEFAULT_SPEED, SPEEDS, isSpeed } from '@shared/speed'
 import type { Speed } from '@shared/speed'
 import { SpeedRefused, runningCycles, setRunningCycles } from './dosboxSpeed'
 import { dosboxProcesses, isTestDosbox } from './memory/win32'
+import { FortuneWatcher } from './fortune'
+import type { FortuneUpdate } from './fortune'
 
 let source: HybridSource | null = null
 let gameDir: string | null = null
@@ -225,6 +227,12 @@ export async function setupIpc(): Promise<void> {
       return { ok: false, message: err instanceof LaunchRefused ? err.message : `Could not start DOSBox: ${(err as Error).message}` }
     }
   })
+
+  // the fortune teller at character creation (#68): live cards, and answering for a chosen class
+  const fortune = new FortuneWatcher(TEST_MODE, (u) => send(IPC.fortuneChanged, u))
+  setInterval(() => void fortune.tick().catch(() => undefined), 700)
+  ipcMain.handle(IPC.fortuneGet, (): FortuneUpdate => fortune.current())
+  ipcMain.handle(IPC.fortuneAuto, (_e, target: unknown): FortuneUpdate => fortune.setAuto(typeof target === 'number' ? target : null))
 
   // game speed (#70): the preset for launches, applied live to this instance's running game
   const ourGame = async (): Promise<number | null> =>
