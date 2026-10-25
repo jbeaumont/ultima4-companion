@@ -52,6 +52,7 @@ Full roadmap: see the "Milestones" section of README.md.
 
 ## Spellbook
 - `src/domain/spells.ts`: costs (U4_SPELL.C `D_208C`), recipes (U4_MIX.C `D_277E`, bit `0x80 >> i` for `REAGENTS[i]`) and where each spell works (each `SPL_` handler's checks), tied to the game by `tests/spells.test.ts`. The game checks only which reagents went in, so one of each is enough. The manual (`manual.pdf` in the install) withholds Gate, Resurrect and Undead: those recipes show at Full or once mixed (Gate: Mentorian in Cove; Resurrect: Nigel in the Lycaeum; Undead: a puzzle).
+- `npx tsx scripts/hillclimb/spellbook.ts <outDir>` checks it in the game: Gate and Undead mix from the data, a wrong recipe fizzles and still uses the reagents, Light outdoors fails without spending MP, and the companion shows the withheld recipes once mixed.
 
 ## Rules
 - Any write to a game file: DOSBox must not be running, snapshot first, explicit user confirmation

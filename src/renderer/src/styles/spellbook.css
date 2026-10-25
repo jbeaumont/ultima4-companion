@@ -8,6 +8,7 @@
 .spell-where { margin-left: auto; font-size: 12px; }
 .spell p { margin: 6px 0; }
 .spell-recipe { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-.spell-recipe .chip { border: 1px solid #4a4370; border-radius: 10px; padding: 1px 8px; }
-.spell-recipe .chip-missing { border-style: dashed; color: var(--muted); }
+.spell-reagent { display: inline-block; white-space: nowrap; border: 1px solid #4a4370; border-radius: 10px; padding: 1px 8px; }
+.spell-reagent-missing { border-style: dashed; color: var(--muted); }
 .spell-stock .warn { color: #e0a050; }
+.spell-list .spell.panel { margin: 0; }

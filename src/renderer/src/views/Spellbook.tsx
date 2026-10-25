@@ -72,7 +72,7 @@ export function Spellbook({ state }: { state: GameState | null }) {
               <p className="small">{s.effect}</p>
               <div className="spell-recipe small">
                 {recipe ? reagentsOf(s.mask).map((i) => (
-                  <span key={i} className={`chip${p && (p.reagents[i] ?? 0) === 0 ? ' chip-missing' : ''}`}>{REAGENTS[i]}</span>
+                  <span key={i} className={`spell-reagent${p && (p.reagents[i] ?? 0) === 0 ? ' spell-reagent-missing' : ''}`}>{REAGENTS[i]}</span>
                 )) : <span className="muted">{learned(s)}</span>}
               </div>
               {p && (
