@@ -3,7 +3,7 @@
 // take ladders down to level 5, search the altar (u4-decompiled U4_SRCH2.C:
 // searching on a dungeon's altar gives its stone, +5 Honor and 200 XP), and
 // check the companion's checklist, stone gem and hint follow.
-//   npx tsx scripts/hillclimb/stone.ts <outDir> [dungeon]
+//   npx tsx scripts/hillclimb/stone.ts <outDir> [dungeon] [--party <level>]
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parsePartySav } from '../../src/parsers/party'
@@ -18,14 +18,16 @@ import { HINTS } from '../../src/domain/hints'
 import { parseDng } from '../../src/parsers/dungeon'
 import { Companion } from './companion'
 
-const GAME = process.env['U4_DIR'] ?? 'C:\\Program Files\\GOG Galaxy\\Games\\Ultima 4'
+const GAME = process.env['U4_DIR'] || 'C:\\Program Files\\GOG Galaxy\\Games\\Ultima 4'
 const TEST_DATA = join(process.env['APPDATA']!, 'ultima4-companion-test')
 const OVERLAY = join(TEST_DATA, 'game-saves')
 // the six altar dungeons: location id = 17 + stone index (U4_SRCH2.C: stone = location - 0x11)
 const DUNGEONS = ['Deceit', 'Despise', 'Destard', 'Wrong', 'Covetous', 'Shame'] as const
 const COLORS = ['Blue', 'Yellow', 'Red', 'Green', 'Orange', 'Purple'] as const
 const VIRTUE_OF = ['Honesty', 'Compassion', 'Valor', 'Justice', 'Sacrifice', 'Honor'] as const
-const NAME = (process.argv[3] ?? 'Despise').replace(/^./, (c) => c.toUpperCase())
+const NAME = (process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : 'Despise').replace(/^./, (c) => c.toUpperCase())
+// --party <level>: a realistic party at that level instead of the maxed test party (#72)
+const PARTY_LEVEL = process.argv.includes('--party') ? Number(process.argv[process.argv.indexOf('--party') + 1]) : 0
 const STONE = DUNGEONS.indexOf(NAME as (typeof DUNGEONS)[number])
 if (STONE < 0) throw new Error(`unknown dungeon ${NAME}`)
 const DUNGEON_ID = 17 + STONE
@@ -55,30 +57,49 @@ async function main(): Promise<void> {
   const tpl = parsePartySav(new Uint8Array(readFileSync(join(GAME, 'PARTY.SAV'))))
   const raw = new Uint8Array(readFileSync(join(OVERLAY, 'PARTY.SAV')))
   const s0 = parsePartySav(raw)
-  s0.allRecords[1] = { ...tpl.allRecords[1]! }
-  s0.memberCount = 2
-  for (const r of s0.allRecords.slice(0, 2)) {
-    // a test party built to survive: the journey checks the route and the hint, not the fighting
-    r.hpMax = 800 // the game's cap
-    r.hp = 800
-    r.status = 'G'
-    r.mp = 99
-    r.str = r.dex = r.int = 50 // the game's cap
-    r.weapon = 14 // Magic Wand: the strongest weapon that fires along a line
-    r.armor = 7 // Mystic Armour
+  if (PARTY_LEVEL) {
+    // a realistic party at that level (#72): companions join only while the Avatar's max HP is at least
+    // 100 x (party size + 1), so a level-L party has at most L members; mid-game gear and a few spells
+    s0.memberCount = Math.min(8, PARTY_LEVEL)
+    for (let i = 1; i < s0.memberCount; i++) s0.allRecords[i] = { ...tpl.allRecords[i]! }
+    for (const r of s0.allRecords.slice(0, s0.memberCount)) {
+      r.hpMax = r.hp = Math.min(800, 100 * PARTY_LEVEL)
+      r.xp = Math.max(r.xp, 100 * 2 ** (PARTY_LEVEL - 2))
+      r.status = 'G'
+      r.mp = Math.max(r.mp, 30)
+      r.weapon = 6 // Sword
+      r.armor = 3 // Chain Mail
+    }
+    s0.mixtures[2] = 5 // Cure
+    s0.mixtures[7] = 10 // Heal
+    s0.mixtures[12] = 10 // Magic Missile
+    s0.mixtures[3] = 6 // Dispel
+  } else {
+    s0.allRecords[1] = { ...tpl.allRecords[1]! }
+    s0.memberCount = 2
+    for (const r of s0.allRecords.slice(0, 2)) {
+      // a test party built to survive: the journey checks the route and the hint, not the fighting
+      r.hpMax = 800 // the game's cap
+      r.hp = 800
+      r.status = 'G'
+      r.mp = 99
+      r.str = r.dex = r.int = 50 // the game's cap
+      r.weapon = 14 // Magic Wand: the strongest weapon that fires along a line
+      r.armor = 7 // Mystic Armour
+    }
+    s0.mixtures[2] = 30 // Cure
+    s0.mixtures[7] = 60 // Heal
+    s0.mixtures[12] = 30 // Magic Missile
+    s0.mixtures[3] = 20 // Dispel, for energy fields (in the dungeon and in rooms)
   }
-  s0.mixtures[2] = 30 // Cure
-  s0.mixtures[7] = 60 // Heal
-  s0.mixtures[12] = 30 // Magic Missile
-  s0.mixtures[3] = 20 // Dispel, for energy fields (in the dungeon and in rooms)
   s0.stones &= ~(1 << STONE)
   s0.x = ENTRANCES[DUNGEON_ID]!.x
   s0.y = ENTRANCES[DUNGEON_ID]!.y
   s0.torches = Math.max(s0.torches, 20)
   s0.food = Math.max(s0.food, 50000)
   writeFileSync(join(OVERLAY, 'PARTY.SAV'), encodePartySav(s0, raw))
-  const names = s0.allRecords.slice(0, 2).map((r) => r.name)
-  log(`test save: ${names.join(' + ')} (maxed stats, Magic Wand, Mystic Armour, spells), no ${COLOR} Stone, on ${NAME}'s entrance`)
+  const names = s0.allRecords.slice(0, s0.memberCount).map((r) => r.name)
+  log(`test save: ${names.join(' + ')} (${PARTY_LEVEL ? `level ${PARTY_LEVEL}, sword, chain mail, a few spells` : 'maxed stats, Magic Wand, Mystic Armour, spells'}), no ${COLOR} Stone, on ${NAME}'s entrance`)
 
   const c = await Companion.connect()
   await c.freshJournal() // checks must not pass on an earlier run's journal
@@ -111,7 +132,7 @@ async function main(): Promise<void> {
   log(`hint: ${hint.tiers[2]}`)
   const altar = findCells(parseDng(new Uint8Array(readFileSync(join(GAME, `${NAME.toUpperCase()}.DNG`)))).levels[ALTAR_LEVEL]!, (c) => (c & 0xf0) === 0xb0)[0]
   if (!altar) throw new Error(`no altar on level ${ALTAR_LEVEL + 1} of ${NAME}: the hint is wrong`)
-  s = await d.dungeonTravel(ALTAR_LEVEL, altar.x, altar.y, { dispel: true, onBattle, onLevel: (p) => log(`ladder: ${where(p)}; ${hp(p)}`) })
+  s = await d.dungeonTravel(ALTAR_LEVEL, altar.x, altar.y, { dispel: true, tend: !!PARTY_LEVEL, onBattle, onLevel: (p) => log(`ladder: ${where(p)}; ${hp(p)}`) })
   log(`on the altar at ${s.x},${s.y}`)
   const before = d.state()
   await d.press('s')

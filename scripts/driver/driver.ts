@@ -682,7 +682,7 @@ export class GameDriver {
     tz: number,
     tx: number,
     ty: number,
-    opts: { dispel?: boolean; onBattle?: (r: BattleResult) => void; onLevel?: (s: PartySave) => void } = {}
+    opts: { dispel?: boolean; tend?: boolean; onBattle?: (r: BattleResult) => void; onLevel?: (s: PartySave) => void } = {}
   ): Promise<PartySave> {
     const { levels } = this.dungeonFile()
     const sides = this.roomSides()
@@ -694,9 +694,35 @@ export class GameDriver {
       if (!plan) throw new DriverError(`No way from L${s.dungeonLevel + 1} ${s.x},${s.y} to L${tz + 1} ${tx},${ty}`)
       const leg = plan[0]!
       await this.dungeonWalkTo(leg.x, leg.y, { dispel: opts.dispel, onBattle: opts.onBattle })
+      if (opts.tend) await this.tendParty()
       if (leg.then) opts.onLevel?.(await this.ladder(leg.then))
     }
     throw new DriverError('Gave up travelling')
+  }
+
+  /**
+   * What a player does between fights: Cure anyone poisoned, then Heal anyone below
+   * half their HP, while mixtures and a member with the MP last (Cure 5 MP, Heal 10).
+   * Returns the spells cast.
+   */
+  async tendParty(): Promise<string[]> {
+    const cast: string[] = []
+    for (let guard = 0; guard < 16; guard++) {
+      const s = this.state()
+      const alive = s.members.map((m, i) => ({ m, i })).filter(({ m }) => m.status !== 'D')
+      const poisoned = alive.find(({ m }) => m.status === 'P')
+      const hurt = alive.filter(({ m }) => m.hp * 2 < m.hpMax).sort((a, b) => a.m.hp / a.m.hpMax - b.m.hp / b.m.hpMax)[0]
+      const [letter, spell, cost, who] = poisoned && s.mixtures[2]! > 0 ? ['c', 2, 5, poisoned]
+        : hurt && s.mixtures[7]! > 0 ? ['h', 7, 10, hurt] : [null, 0, 0, null]
+      if (!letter || !who) break
+      const caster = alive.filter(({ m }) => m.status !== 'S' && m.mp >= cost).sort((a, b) => b.m.mp - a.m.mp)[0]
+      if (!caster) break
+      const before = s.mixtures[spell]!
+      await this.castSpell(letter, { caster: caster.i, who: who.i })
+      if (this.state().mixtures[spell]! >= before) break // nothing happened: stop rather than loop
+      cast.push(`${letter === 'c' ? 'Cure' : 'Heal'} ${who.m.name}`)
+    }
+    return cast
   }
 
 
